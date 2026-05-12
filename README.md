@@ -3,7 +3,7 @@ BigDecimal is a high-performance, arbitrary-precision decimal library designed t
 
 Whether you are performing complex financial reconciliations or deep scientific research, BigDecimal ensures that your results are never compromised by floating-point errors or rounding limitations.
 
-To demonstrate the precision and performance of the underlying engine, this add-in includes BigCalculator—a standalone interactive interface built directly with Excel. This calculator allows users to perform real-time, arbitrary-precision calculations and experiment with the expanded scientific function suite without needing to write a single formula. It serves as a perfect "sandbox" to verify results and visualize the extreme decimal accuracy that BigDecimal provides before implementing it into your primary workbooks.
+To demonstrate the precision and performance of the underlying engine, this add-in includes BigCalculator—a standalone interactive interface built directly in Excel. This calculator allows users to perform real-time, arbitrary-precision calculations and experiment with the expanded scientific function suite without needing to write a single formula. It serves as a perfect "sandbox" to verify results and visualize the extreme decimal accuracy that BigDecimal provides before implementing it into your primary workbooks.
 
 <p align="center">
   <img src="Assets/BigCalculator.jpg" alt="BigCalculator Screenshot">
