@@ -10,10 +10,10 @@ To demonstrate the precision and performance of the underlying engine, this add-
 </p>
 
 ## Key Capabilities
-1. Arbitrary Precision: Calculations are no longer restricted by standard 64-bit float constraints. Your precision is limited only by your system’s hardware and available memory.
-2. Enterprise-Standard Logic: Mimics the reliable rounding modes and arithmetic behavior of the Java BigDecimal class, ensuring consistent results across different platforms.
-3. Advanced Scientific Suite: Beyond standard arithmetic ($+$, $-$, $\times$, $\div$), the add-in includes an expanded library of scientific functions optimized for high-precision environments.
-4. Native Excel Integration: Functions are exposed directly within an Excel Class, allowing you to use them as easily while maintaining extreme decimal accuracy.
+1. **Arbitrary Precision:** Calculations are no longer restricted by standard 64-bit float constraints. Your precision is limited only by your system’s hardware and available memory.
+2. **Enterprise-Standard Logic:** Mimics the reliable rounding modes and arithmetic behavior of the Java BigDecimal class, ensuring consistent results across different platforms.
+3. **Advanced Scientific Suite:** Beyond standard arithmetic ($+$, $-$, $\times$, $\div$), the add-in includes an expanded library of scientific functions optimized for high-precision environments.
+4. **Native Excel Integration:** Functions are exposed directly within an Excel Class, allowing you to use them as easily while maintaining extreme decimal accuracy.
 
 ## Why BigDecimal?
 Standard Excel uses the IEEE 754 floating-point standard, which is excellent for speed but can introduce "silent" errors in very large or very small numbers. BigDecimal for Excel replaces this with an exact-value representation, allowing you to define the exact scale and precision required for your specific use case.
