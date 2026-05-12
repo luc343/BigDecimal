@@ -17,3 +17,15 @@ To demonstrate the precision and performance of the underlying engine, this add-
 
 ## Why BigDecimal?
 Standard Excel uses the IEEE 754 floating-point standard, which is excellent for speed but can introduce "silent" errors in very large or very small numbers. BigDecimal for Excel replaces this with an exact-value representation, allowing you to define the exact scale and precision required for your specific use case.
+
+## Installation & Usage
+
+1. Download the Release files.
+2. Unzip and unblock BigDecimal v1.2.xlam
+3. Move the add-in into the %AppData%\Microsoft\Addins folder
+4. Import the required components into your VBA Project.
+5. Start using the BigDecimal Class.
+
+## License
+
+This project is licensed under the **MIT License**. See the [LICENSE](../LICENSE) file for details.
