@@ -19,17 +19,17 @@ Option Explicit
 '***************************************
 
 Public Function New_BigDecimal(Optional StrValue As String = "") As BigDecimal
-	Set New_BigDecimal = New BigDecimal
+    Set New_BigDecimal = New BigDecimal
 
-	On Error GoTo Done
-	If StrValue <> "" Then
-		New_BigDecimal.StrValue = StrValue
-	End If
-	On Error GoTo 0
+    On Error GoTo Done
+    If StrValue <> "" Then
+	New_BigDecimal.StrValue = StrValue
+    End If
+    On Error GoTo 0
 
-	Exit Function
+    Exit Function
 Done:
-	On Error GoTo 0
+    On Error GoTo 0
 
-	Set New_BigDecimal = Nothing
+    Set New_BigDecimal = Nothing
 End Function
