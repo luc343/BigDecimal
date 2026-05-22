@@ -3,7 +3,7 @@ Option Explicit
 
 '---------------------------------------------------
 '
-'                  Lib_BigDecimal
+'          Lib_BigDecimal
 '
 ' Copyright (c) Lucien Cinc 2025
 '
@@ -12,24 +12,24 @@ Option Explicit
 '
 '---------------------------------------------------
 
+Public BigOption As New BigOption   'set global options
+
 '***************************************
 '
 '           New a BigDecimal
 '
 '***************************************
 
-Public Function New_BigDecimal(Optional StrValue As String = "") As BigDecimal
+Public Function New_BigDecimal(Optional Value As Variant) As BigDecimal
     Set New_BigDecimal = New BigDecimal
 
-    On Error GoTo Done
-    If StrValue <> "" Then
-	New_BigDecimal.StrValue = StrValue
+    If Not IsMissing(Value) Then
+	New_BigDecimal = Value
     End If
-    On Error GoTo 0
+End Function
 
-    Exit Function
-Done:
-    On Error GoTo 0
+Public Function CBgDec(Value As Variant) As BigDecimal
+    Set CBgDec = New BigDecimal
 
-    Set New_BigDecimal = Nothing
+    CBgDec = Value
 End Function
