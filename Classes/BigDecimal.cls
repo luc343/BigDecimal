@@ -250,8 +250,8 @@ End Function
 
 Public Function Pow(Value As Variant) As BigDecimal
     Dim Other As BigDecimal
-    Dim Zero As New BigDecimal
-    Dim One As New BigDecimal
+    Dim Zero As BigDecimal
+    Dim One As BigDecimal
 
     Set Other = Cast(Value)
     Set Pow = New BigDecimal
@@ -288,11 +288,11 @@ Public Function Pow(Value As Variant) As BigDecimal
 End Function
 
 Private Function PowInt(Other As BigDecimal) As BigDecimal
-    Dim Base As New BigDecimal
-    Dim ExpVal As New BigDecimal
-    Dim Zero As New BigDecimal
-    Dim One As New BigDecimal
-    Dim Two As New BigDecimal
+    Dim Base As BigDecimal
+    Dim ExpVal As BigDecimal
+    Dim Zero As BigDecimal
+    Dim One As BigDecimal
+    Dim Two As BigDecimal
 
     Set PowInt = New BigDecimal
 
