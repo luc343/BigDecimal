@@ -256,8 +256,8 @@ Public Function Pow(Value As Variant) As BigDecimal
     Set Other = Cast(Value)
     Set Pow = New BigDecimal
 
-    Zero = New BigDecimal
-    One = New BigDecimal
+    Set Zero = New BigDecimal
+    Set One = New BigDecimal
 
     Zero = 0
     One = 1
@@ -296,11 +296,11 @@ Private Function PowInt(Other As BigDecimal) As BigDecimal
 
     Set PowInt = New BigDecimal
 
-    Base = New BigDecimal
-    ExpVal = New BigDecimal
-    Zero = New BigDecimal
-    One = New BigDecimal
-    Two = New BigDecimal
+    Set Base = New BigDecimal
+    Set ExpVal = New BigDecimal
+    Set Zero = New BigDecimal
+    Set One = New BigDecimal
+    Set Two = New BigDecimal
 
     Base = Me
     ExpVal = Other
