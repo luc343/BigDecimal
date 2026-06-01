@@ -3,9 +3,9 @@ Option Explicit
 
 '---------------------------------------------------
 '
-'          Lib_BigDecimal
+'                 Lib_BigDecimal
 '
-' Copyright (c) Lucien Cinc 2025
+' Copyright (c) Lucien Cinc 2025-26
 '
 ' Available under the MIT license: see the LICENSE
 ' file at the root of this project.
@@ -13,6 +13,7 @@ Option Explicit
 '---------------------------------------------------
 
 Public BigOption As New BigOption   'set global options
+Public Yield As New Yield           'prevent excel from not responding
 
 '***************************************
 '
