@@ -5,6 +5,73 @@ All notable changes to the BigNumber Add-in will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+# Changelog
+
+All notable changes to the BigDecimal Add-in will be documented in this file.
+
+---
+
+## [1.4] - 2026-05-30
+
+### Added
+
+- Added helper methods to improve code readability and simplify algorithm development:
+  - `IsZero()` – Returns `True` if the value equals zero.
+  - `IsNeg()` – Returns `True` if the value is negative.
+  - `IsPos()` – Returns `True` if the value is positive.
+  - `IsEq()` – Returns `True` if two values are equal.
+  - `IsNEq()` – Returns `True` if two values are not equal.
+  - `IsGT()` – Returns `True` if the value is greater than another value.
+  - `IsLT()` – Returns `True` if the value is less than another value.
+  - `IsGE()` – Returns `True` if the value is greater than or equal to another value.
+  - `IsLE()` – Returns `True` if the value is less than or equal to another value.
+  - `Log()` – Returns the base-10 logarithm of the value.
+
+- Added the `AddTrailingZeros` option.
+  - Appends trailing zeros when rounding if the requested scale exceeds the configured `TarScale`.
+  - Requires `AutoRound` to be enabled.
+
+- Added a Yield class to manage the BigDecimal performance against Excel not responding.
+
+- Added a Scale control to the BigCalculator example, allowing the internal `TarScale` value to be modified interactively.
+
+- Added a comprehensive automated test suite containing 69 tests covering all major BigDecimal functionality.
+  - Results are displayed in the VBA Immediate Window.
+  - Passed and failed tests are clearly identified.
+
+### Changed
+
+- Renamed `MaxScale` to `TarScale` (*Target Scale*) for improved clarity.
+  - `TarScale` now controls the scale used when returning values through `.ValueEx(vbString)`.
+  - `MaxScale` has been repurposed internally to store additional digits used during rounding, called Guard digits.
+
+- Increased the number of internal Guard digits to 5 to improve rounding accuracy and reduce propagation of rounding errors.
+
+- Renamed `Cmp()` to `CmpTo()` to improve code readability.
+
+- Modified rounding behaviour so that `Round()` is only applied when returning numeric values.
+  - String values are rounded directly to `TarScale` decimal places.
+  - The `Round()` parameter now explicitly determines the rounding precision applied to the `BigDecimal`.
+
+### Performance
+
+- Removed the use of `Mid$()` and `Asc()` from the core `Compare_Positive()` and `Round()` methods.
+  - Replaced with optimized byte-array processing.
+  - Significantly improves performance of comparison and rounding operations.
+
+- Optimized logarithmic calculations used by BigDecimal.
+  - Improved algorithm efficiency.
+  - Added caching for `Ln2()` and `Ln10()` to accelerate repeated calculations.
+
+### Fixed
+
+- Fixed the BigCalculator example by ensuring `BigDecimal` objects are instantiated before checking for `Nothing`, eliminating runtime errors.
+
+### Documentation
+
+- Updated and expanded the documentation.
+- Added new sections and examples to improve usability and clarity.
+
 ---
 
 ## [1.3] - 2026-05-23
@@ -12,7 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 #### Automatic Type Casting
-- Added support for auto-casting standard VBA types (e.g. `vbInteger`, `vbLong`, `vbLongLong`, `vbShort`, `vbDouble` and `vbstring`) to a `BigDecimal` object.
+- Added support for auto-casting standard VBA types (e.g. `vbLong`, `vbDouble`) to a `BigDecimal` object.
 - This greatly simplifies writing arithmetic expressions.
 
 **Example**
@@ -113,7 +180,7 @@ MyStr = Num1.ValueEx(vbString)
 ### Performance
 
 #### Core Arithmetic Optimization
-- Rewrote fundamental internal arithmetic functions to utilize byte arrays instead of string manipulation operations such as:
+- Rewrote fundamental internal core arithmetic functions to utilize byte arrays instead of string manipulation operations such as:
   - `Mid$()`
   - `Chr$()`
 - This drastically improves the execution speed of the low-level building blocks upon which all other library functions rely.
