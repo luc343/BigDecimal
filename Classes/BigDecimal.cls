@@ -50,16 +50,16 @@ Private Big_lScale As Long          'number of decimal places
 Private Big_lMaxScale As Long       'maximum decimal places
 Private Big_lTarScale As Long       'target decimal places
 
-Private Const Big_lExtra As Long = 5    'extra internal digits to calculate for rounding
+Private Const Big_lExtra As Long = 5        'guard digits
 
 Private OptionOutputDebug As Boolean        'switch debug on/off
 Private OptionAutoRound As Boolean          'switch rounding on/off when return a string
 Private OptionAddTrailingZeroes As Boolean  'switch trailing zeroes on/off when using round()
 
-Private Const Asc_Dot As Byte = 46      'asc(".")
-Private Const Asc_0 As Byte = 48        'asc("0")
-Private Const Asc_5 As Byte = 53        'asc("5")
-Private Const Asc_9 As Byte = 57        'asc("9")
+Private Const Asc_Dot As Byte = 46      'asc '.'
+Private Const Asc_0 As Byte = 48        'asc '0'
+Private Const Asc_5 As Byte = 53        'asc '5'
+Private Const Asc_9 As Byte = 57        'asc '9'
 
 '######################### BigDecimal Methods ########################
 
@@ -93,47 +93,35 @@ End Sub
 
 Public Function Plus(Value As Variant) As BigDecimal
     Dim Other As BigDecimal
-    Dim Temp As BigDecimal
 
     Set Other = Cast(Value)
-    Set Plus = New BigDecimal
-
-    Set Temp = New BigDecimal
 
     If Big_lSign > 0 And Other.lSign > 0 Then
-	Plus = Plus_Positive(Other, 1)
+	Set Plus = Plus_Positive(Other, 1)
 	Exit Function
     End If
 
     If Big_lSign > 0 And Other.lSign < 0 Then
 	If Compare_Positive(Other) >= 0 Then
-	    Plus = Minus_Positive(Other, 1)
+	    Set Plus = Minus_Positive(Other, 1)
 	    Exit Function
 	Else
-	    Temp = Me
-
-	    Me = Other
-	    Plus = Minus_Positive(Temp, -1)
-	    Me = Temp
+	    Set Plus = Other.Minus_Positive(Me, -1)
 	    Exit Function
 	End If
     End If
 
     If Big_lSign < 0 And Other.lSign > 0 Then
 	If Compare_Positive(Other) <= 0 Then
-	    Temp = Me
-
-	    Me = Other
-	    Plus = Minus_Positive(Temp, 1)
-	    Me = Temp
+	    Set Plus = Other.Minus_Positive(Me, 1)
 	    Exit Function
 	Else
-	    Plus = Minus_Positive(Other, -1)
+	    Set Plus = Minus_Positive(Other, -1)
 	    Exit Function
 	End If
     End If
 
-    Plus = Plus_Positive(Other, -1)     'Big_lSign < 0 And other.lSign < 0
+    Set Plus = Plus_Positive(Other, -1)     'Big_lSign < 0 And other.lSign < 0
 End Function
 
 '***************************************
@@ -147,12 +135,11 @@ Public Function Minus(Value As Variant) As BigDecimal
     Dim Org_lSign As Long
 
     Set Other = Cast(Value)
-    Set Minus = New BigDecimal
 
     Org_lSign = Other.lSign
 
     Other.lSign = Other.lSign * -1
-    Minus = Plus(Other)
+    Set Minus = Me.Plus(Other)
 
     Other.lSign = Org_lSign
 End Function
@@ -167,9 +154,8 @@ Public Function Times(Value As Variant) As BigDecimal
     Dim Other As BigDecimal
 
     Set Other = Cast(Value)
-    Set Times = New BigDecimal
 
-    Times = Times_Positive(Other, Big_lSign * Other.lSign)
+    Set Times = Times_Positive(Other, Big_lSign * Other.lSign)
 End Function
 
 '***************************************
@@ -182,9 +168,8 @@ Public Function Divide(Value As Variant) As BigDecimal
     Dim Other As BigDecimal
 
     Set Other = Cast(Value)
-    Set Divide = New BigDecimal
 
-    Divide = Divide_Positive(Other, Big_lSign * Other.lSign)
+    Set Divide = Divide_Positive(Other, Big_lSign * Other.lSign)
 End Function
 
 '***************************************
@@ -196,17 +181,19 @@ End Function
 Public Function Remdr(Value As Variant) As BigDecimal
     Dim Other As BigDecimal
     Dim Quot As BigDecimal
+    Dim MeAbs As BigDecimal
+    Dim OtherAbs As BigDecimal
 
     Set Other = Cast(Value)
-    Set Remdr = New BigDecimal
 
-    Set Quot = New BigDecimal
+    Set MeAbs = Me.AbsVal()
+    Set OtherAbs = Other.AbsVal()
 
-    Quot = AbsVal().Divide(Other.AbsVal()).Trunc()        'Quotient = Int(Abs(x) / Abs(y))
-    Remdr = AbsVal().Minus(Other.AbsVal().Times(Quot))    'Remainder = Abs(dblX) - Abs(dblY) * dblQuotient
+    Set Quot = MeAbs.Divide(OtherAbs).Trunc()       'Quotient = Int(Abs(x / y))
+    Set Remdr = MeAbs.Minus(OtherAbs.Times(Quot))   'Remainder = Abs(dblX) - Abs(dblY) * dblQuotient
 
     If Big_lSign * Other.lSign < 0 Then
-	Remdr = Other.AbsVal().Minus(Remdr)
+	Set Remdr = Other.AbsVal().Minus(Remdr)
     End If
 
     Remdr.lSign = Other.lSign
@@ -221,33 +208,74 @@ End Function
 '***************************************
 
 Public Function Sqrt() As BigDecimal
-    Dim Two As BigDecimal
     Dim X As BigDecimal
     Dim Prec As BigDecimal
-
-    Set Sqrt = New BigDecimal
-
-    Set Two = New BigDecimal
-    Set X = New BigDecimal
-    Set Prec = New BigDecimal
 
     If Big_lSign < 0 Then
 	Err.Raise vbObjectError + 1101, "BigDecimal", "SquareRoot of negative number is undefined."
     End If
 
+    Set X = New BigDecimal
+    Set Prec = New BigDecimal
+
     Prec = "0." & String$(Big_lMaxScale - 1, "0") & "1"
 
-    Two = 2
-    Sqrt = Divide(Two)
+    Set Sqrt = Me.Divide(BigTwo)
 
     While Sqrt.Minus(X).AbsVal().IsGT(Prec)
 	X = Sqrt
-	Sqrt = Sqrt.Plus(Divide(Sqrt)).Divide(Two)       'x = (x + value / x) / 2
+	Set Sqrt = Sqrt.Plus(Divide(Sqrt)).Divide(BigTwo)       'x = (x + value / x) / 2
 
 	Yield.Events
     Wend
 
     DebugPrint Sqrt, "Sqrt"
+End Function
+
+'***************************************
+'
+'                Square
+'
+'***************************************
+
+Public Function Sqr() As BigDecimal
+    Set Sqr = Me.Times(Me)
+
+    DebugPrint Sqr, "Sqr"
+End Function
+
+'***************************************
+'
+'                 Cube
+'
+'***************************************
+
+Public Function Cube() As BigDecimal
+    Set Cube = Me.Times(Me).Times(Me)
+
+    DebugPrint Cube, "Cube"
+End Function
+
+'***************************************
+'
+'                Cubert
+'
+'***************************************
+
+Public Function Cubert() As BigDecimal
+    If Me.IsZero() Then
+	Set Cubert = New BigDecimal
+	Cubert = BigZero
+	Exit Function
+    End If
+
+    Set Cubert = Me.AbsVal().Ln().Divide(3).Exp()   'exp(ln(|x|) / 3)
+
+    If Big_lSign < 0 Then
+	Set Cubert = Cubert.Neg()
+    End If
+
+    DebugPrint Cubert, "Cubert"
 End Function
 
 '***************************************
@@ -258,76 +286,77 @@ End Function
 
 Public Function Pow(Value As Variant) As BigDecimal
     Dim Other As BigDecimal
-    Dim Zero As BigDecimal
-    Dim One As BigDecimal
 
     Set Other = Cast(Value)
-    Set Pow = New BigDecimal
 
-    Set Zero = New BigDecimal
-    Set One = New BigDecimal
-
-    Zero = 0
-    One = 1
-
-    If IsEq(Zero) And Other.IsLE(Zero) Then
+    If Me.IsEq(BigZero) And Other.IsLE(BigZero) Then
 	Err.Raise vbObjectError + 1102, "BigDecimal", "ZERO to the power of a non-positive number is undefined."
     End If
 
     If Big_lSign = -1 And Big_lScale > 0 Then
-	Err.Raise vbObjectError + 1102, "BigDecimal", "A negative number to a non-integer power is undefined."
+	Err.Raise vbObjectError + 1103, "BigDecimal", "A negative number to a non-integer power is undefined."
     End If
 
     If Other.lScale = 0 Then    'integer power
-	Pow = PowInt(Other)
+	Set Pow = PowInt(Other)
     Else
-	Pow = AbsVal().Ln().Times(Other).Exp()
+	Set Pow = Me.AbsVal().Ln().Times(Other).Exp()
 
-	If Big_lSign = -1 And Other.Trunc().Remdr(2).IsEq(One) Then
-	    Pow = Pow.Neg()
+	If Big_lSign = -1 And Other.Trunc().Remdr(BigTwo).IsEq(BigOne) Then
+	    Set Pow = Pow.Neg()
 	End If
     End If
 
     DebugPrint Pow, "Pow"
 End Function
 
-Private Function PowInt(Other As BigDecimal) As BigDecimal
+Friend Function PowInt(Other As BigDecimal) As BigDecimal
     Dim X As BigDecimal
     Dim Y As BigDecimal
-    Dim Zero As BigDecimal
-    Dim One As BigDecimal
-    Dim Two As BigDecimal
-
-    Set PowInt = New BigDecimal
 
     Set X = New BigDecimal
     Set Y = New BigDecimal
-    Set Zero = New BigDecimal
-    Set One = New BigDecimal
-    Set Two = New BigDecimal
 
     X = Me
     Y = Other
-    Zero = 0
-    One = 1
-    Two = 2
-    PowInt = One
+    Set PowInt = BigOne
 
-    If Y.IsLT(Zero) Then   'x^(-y) = (1/x)^y
-	X = One.Divide(X)
-	Y = Y.Neg()
+    If Y.IsLT(BigZero) Then   'x^(-y) = (1/x)^y
+	Set X = BigOne.Divide(X)
+	Set Y = Y.Neg()
     End If
 
-    Do While Y.IsGT(Zero)
-	If Y.Remdr(Two).IsNEq(Zero) Then    'odd exponent
-	    PowInt = PowInt.Times(X)
+    Do While Y.IsGT(BigZero)
+	If Y.Remdr(BigTwo).IsNEq(BigZero) Then    'odd exponent
+	    Set PowInt = PowInt.Times(X)
 	End If
 
-	X = X.Times(X)
-	Y = Y.Divide(Two).Trunc()
+	Set X = X.Times(X)
+	Set Y = Y.Divide(BigTwo).Trunc()
 
 	Yield.Events
     Loop
+End Function
+
+'***************************************
+'
+'           Ten to the Power
+'
+'***************************************
+
+Public Function Pow10() As BigDecimal
+    If Big_lScale = 0 Then
+	Dim X As BigDecimal
+
+	Set X = New BigDecimal
+	X = 10
+	Set Pow10 = X.PowInt(Me)
+	Exit Function
+    End If
+
+    Set Pow10 = Me.Times(Ln10()).Exp()
+
+    DebugPrint Pow10, "Pow10"
 End Function
 
 '***************************************
@@ -337,16 +366,11 @@ End Function
 '***************************************
 
 Public Function Log() As BigDecimal
-    Dim Zero As BigDecimal
-
-    Set Log = New BigDecimal
-    Set Zero = New BigDecimal
-
-    If IsLE(Zero) Then
-	Err.Raise 5, "BigDecimal", "Logarithm of ZERO or negative number is undefined."
+    If Me.IsLE(BigZero) Then
+	Err.Raise vbObjectError + 1104, "BigDecimal", "Logarithm of ZERO or negative number is undefined."
     End If
 
-    Log = Ln().Divide(Ln10())
+    Set Log = Me.Ln().Divide(Ln10())
 
     DebugPrint Log, "Log"
 End Function
@@ -357,199 +381,148 @@ End Function
 '
 '***************************************
 
+'Mercator/Taylor series
 Public Function Ln() As BigDecimal
-    Dim Zero As BigDecimal
-    Dim One As BigDecimal
-    Dim Two As BigDecimal
     Dim X As BigDecimal
-    Dim N As BigDecimal
+    Dim n As BigDecimal
     Dim Y As BigDecimal
     Dim Term As BigDecimal
     Dim Prec As BigDecimal
 
-    Set Ln = New BigDecimal
+    If Me.IsLE(BigZero) Then   'log is undefined for other <= 0
+	Err.Raise vbObjectError + 1105, "BigDecimal", "Logarithm of ZERO or negative number is undefined."
+    End If
 
-    Set Zero = New BigDecimal
-    Set One = New BigDecimal
-    Set Two = New BigDecimal
-    Set X = New BigDecimal
-    Set N = New BigDecimal
-    Set Y = New BigDecimal
-    Set Term = New BigDecimal
+    Set X = New BigDecimal  'all needed
     Set Prec = New BigDecimal
 
     Prec = "0." & String$(Big_lMaxScale - 1, "0") & "1"
 
-    Zero = 0
-    One = 1
-    Two = 2
-
-    If IsLE(Zero) Then   'log is undefined for other <= 0
-	Err.Raise vbObjectError + 1102, "BigDecimal", "Logarithm of ZERO or negative number is undefined."
-    End If
-
+    Set n = BigZero
     X = Me
-    While X.IsGE(Two)
-	N = N.Plus(One)
-	X = X.Divide(Two)
+    While X.IsGE(BigTwo)
+	Set n = n.Plus(BigOne)
+	Set X = X.Divide(BigTwo)
 
 	Yield.Events
     Wend
-    While X.IsLT(One)
-	N = N.Minus(One)
-	X = X.Times(Two)
+    While X.IsLT(BigOne)
+	Set n = n.Minus(BigOne)
+	Set X = X.Times(BigTwo)
 
 	Yield.Events
     Wend
-    X = X.Minus(One)
+    Set X = X.Minus(BigOne)
 
-    Term = X
-    Y = Two
+    Set Ln = BigZero
+    Set Term = X
+    Set Y = BigTwo
     While Term.AbsVal().IsGT(Prec)
-	Ln = Ln.Plus(Term)
-	Term = Term.Neg().Times(X).Times(Y.Minus(One)).Divide(Y)       'term = -term * x * (y - 1) / y
-	Y = Y.Plus(One)
+	Set Ln = Ln.Plus(Term)
+	Set Term = Term.Neg().Times(X).Times(Y.Minus(BigOne)).Divide(Y)       'term = -term * x * (y - 1) / y
+	Set Y = Y.Plus(BigOne)
 
 	Yield.Events
     Wend
 
-    Ln = Ln.Plus(N.Times(Ln2()))
+    Set Ln = Ln.Plus(n.Times(Ln2()))
 
     DebugPrint Ln, "Ln"
 End Function
 
 Private Function Ln2() As BigDecimal
-    Dim IsDone As Boolean
     Dim X As BigDecimal
     Dim NextX As BigDecimal
     Dim ExpX As BigDecimal
-    Dim Numerator As BigDecimal
-    Dim Denominator As BigDecimal
     Dim Fraction As BigDecimal
-    Dim Two As BigDecimal
-    Dim Diff As BigDecimal
     Dim Prec As BigDecimal
-
-    Set Ln2 = New BigDecimal
-    Set X = New BigDecimal
-    Set NextX = New BigDecimal
-    Set ExpX = New BigDecimal
-    Set Numerator = New BigDecimal
-    Set Denominator = New BigDecimal
-    Set Fraction = New BigDecimal
-    Set Two = New BigDecimal
-    Set Diff = New BigDecimal
-    Set Prec = New BigDecimal
-
-    If BigOption.Ln2_Buf = "" Then
-	BigOption.Ln2_Buf = "0.693147180559945309417232121458176568075500134360255254120680009493393621969694715605863326996418687542001481020570685733685520235758130557032670751635076"   'i53 digits
-	BigOption.Ln2_Scale = Len(BigOption.Ln2_Buf) - Big_lExtra
-    End If
+    Dim Done As Boolean
 
     If Big_lMaxScale <= BigOption.Ln2_Scale Then
+	Set Ln2 = New BigDecimal
 	Ln2 = BigOption.Ln2_Buf
 	If Big_lMaxScale < BigOption.Ln2_Scale Then
-	    Ln2 = Ln2.Round(Big_lMaxScale + 1)
+	    Set Ln2 = Ln2.Round(Big_lMaxScale)
 	End If
 	Exit Function
     End If
 
-    Prec = "0." & String$(Big_lMaxScale - 2, "0") & "1"
-    Two = 2
+    Set X = New BigDecimal
+    Set Fraction = New BigDecimal
+    Set Prec = New BigDecimal
 
-    X = "0.6931471805599453"    'seed X with a highly accurate initial double value
+    Prec = "0." & String$(Big_lMaxScale - 1, "0") & "1"
 
-    IsDone = True
+    X = BigOption.Ln2_Buf   'init with large cache
 
-    While IsDone
-	ExpX = X.Exp()
+    Done = False
+    Do While Not Done
+	Set ExpX = X.Exp()
+	Fraction = BigTwo.Minus(ExpX).Divide(BigTwo.Plus(ExpX))
+	Set NextX = X.Plus(BigTwo.Times(Fraction))
 
-	Numerator = Two.Minus(ExpX)
-	Denominator = Two.Plus(ExpX)
-	Fraction = Numerator.Divide(Denominator)
-	NextX = X.Plus(Two.Times(Fraction))
-
-	Diff = NextX.Minus(X).AbsVal()
-	If Diff.IsLT(Prec) Or Diff.IsEq(0) Then
-	    IsDone = False
+	If NextX.Minus(X).AbsVal().IsLT(Prec) Then
+	    Done = True
 	End If
 
-	X = NextX
+	Set X = NextX
 	Yield.Events
-    Wend
+    Loop
 
     BigOption.Ln2_Buf = X.sValue
     BigOption.Ln2_Scale = X.lScale
 
-    Ln2.sValue = X.sValue
-    Ln2.lSign = 1
-    Ln2.lInt = X.lInt
-    Ln2.lDot = X.lDot
-    Ln2.lFrac = X.lFrac
-    Ln2.lScale = X.lScale
+    Set Ln2 = X
 
     DebugPrint Ln2, "Ln2"
 End Function
 
 Private Function Ln10() As BigDecimal
-    Dim IsDone As Boolean
     Dim X As BigDecimal
     Dim NextX As BigDecimal
+    Dim ExpX As BigDecimal
     Dim Ten As BigDecimal
-    Dim One As BigDecimal
-    Dim Diff As BigDecimal
+    Dim Fraction As BigDecimal
     Dim Prec As BigDecimal
-
-    Set Ln10 = New BigDecimal
-    Set X = New BigDecimal
-    Set NextX = New BigDecimal
-    Set Ten = New BigDecimal
-    Set One = New BigDecimal
-    Set Diff = New BigDecimal
-    Set Prec = New BigDecimal
-
-    If BigOption.Ln10_Buf = "" Then
-	BigOption.Ln10_Buf = "2.302585092994045684017991454684364207601101488628772976033327900967572609677352480235997205089598298341967784042286249634571010703174033908522045811213718"  '153 digits
-	BigOption.Ln10_Scale = Len(BigOption.Ln10_Buf) - Big_lExtra
-    End If
+    Dim Done As Boolean
 
     If Big_lMaxScale <= BigOption.Ln10_Scale Then
+	Set Ln10 = New BigDecimal
 	Ln10 = BigOption.Ln10_Buf
 	If Big_lMaxScale < BigOption.Ln10_Scale Then
-	    Ln10 = Ln10.Round(Big_lMaxScale + 1)
+	    Set Ln10 = Ln10.Round(Big_lMaxScale)
 	End If
 	Exit Function
     End If
 
-    Prec = "0." & String$(Big_lMaxScale - 2, "0") & "1"
-    One = 1
-    Ten = 10
+    Set X = New BigDecimal
+    Set Fraction = New BigDecimal
+    Set Ten = New BigDecimal
+    Set Prec = New BigDecimal
 
-    X = "2.3025850929940457"    'seed X with a highly accurate initial double value
+    Prec = "0." & String$(Big_lMaxScale - 1, "0") & "1"
+    Ten = "10"
 
-    IsDone = True
+    X = BigOption.Ln10_Buf   'init with large cache
 
-    While IsDone
-	NextX = X.Minus(One).Plus(Ten.Divide(X.Exp()))
+    Done = False
+    Do While Not Done
+	Set ExpX = X.Exp()
+	Fraction = Ten.Minus(ExpX).Divide(Ten.Plus(ExpX))
+	Set NextX = X.Plus(BigTwo.Times(Fraction))
 
-	Diff = NextX.Minus(X).AbsVal()
-	If Diff.IsLT(Prec) Or Diff.IsEq(0) Then
-	    IsDone = False
+	If NextX.Minus(X).AbsVal().IsLT(Prec) Then
+	    Done = True
 	End If
 
-	X = NextX
+	Set X = NextX
 	Yield.Events
-    Wend
+    Loop
 
     BigOption.Ln10_Buf = X.sValue
     BigOption.Ln10_Scale = X.lScale
 
-    Ln10.sValue = X.sValue
-    Ln10.lSign = 1
-    Ln10.lInt = X.lInt
-    Ln10.lDot = X.lDot
-    Ln10.lFrac = X.lFrac
-    Ln10.lScale = X.lScale
+    Set Ln10 = X
 
     DebugPrint Ln10, "Ln10"
 End Function
@@ -563,52 +536,43 @@ End Function
 Public Function Exp() As BigDecimal
     Dim Term As BigDecimal
     Dim Prec As BigDecimal
-    Dim N As BigDecimal
-    Dim One As BigDecimal
-    Dim Two As BigDecimal
+    Dim n As BigDecimal
     Dim ReducedX As BigDecimal
     Dim Half As BigDecimal
-    Dim k As Long
+    Dim K As Long
     Dim i As Long
 
-    Set Exp = New BigDecimal
-    Set Term = New BigDecimal
     Set Prec = New BigDecimal
-    Set N = New BigDecimal
-    Set One = New BigDecimal
-    Set Two = New BigDecimal
     Set ReducedX = New BigDecimal
     Set Half = New BigDecimal
 
-    One = 1
-    Two = 2
     Prec = "0." & String$(Big_lMaxScale - 1, "0") & "1"
 
-    k = 0
+    K = 0
     Half = 0.5
     ReducedX = Me
 
     While ReducedX.AbsVal().IsGT(Half)
-	ReducedX = ReducedX.Divide(Two)
-	k = k + 1
+	Set ReducedX = ReducedX.Divide(BigTwo)
+	K = K + 1
 
 	Yield.Events
     Wend
 
-    Exp = One
-    Term = One
-    N = One
+    Set Exp = BigOne
+    Set Term = BigOne
+    Set n = BigOne
 
     While Term.AbsVal().IsGT(Prec)
-	Term = Term.Times(ReducedX).Divide(N)
-	Exp = Exp.Plus(Term)
-	N = N.Plus(One)
+	Set Term = Term.Times(ReducedX).Divide(n)
+	Set Exp = Exp.Plus(Term)
+	Set n = n.Plus(BigOne)
 
 	Yield.Events
     Wend
 
-    For i = 1 To k
-	Exp = Exp.Times(Exp)
+    For i = 1 To K
+	Set Exp = Exp.Times(Exp)
 
 	Yield.Events
     Next i
@@ -618,33 +582,111 @@ End Function
 
 '***************************************
 '
+'               Invert
+'
+'***************************************
+
+Public Function Invert() As BigDecimal
+    If Me.IsZero() Then
+	Err.Raise vbObjectError + 1105, "BigDecimal", "Division by ZERO is undefined."
+    End If
+
+    Set Invert = BigOne.Divide(Me)
+
+    DebugPrint Invert, "Invert"
+End Function
+
+'***************************************
+'
+'       Greatest Common Divisor
+'
+'***************************************
+
+Public Function GCD(Value As Variant) As BigDecimal
+    Dim Other As BigDecimal
+    Dim X As BigDecimal
+    Dim Y As BigDecimal
+    Dim Remainder As BigDecimal
+    Dim MaxScale As Long
+
+    Set Other = Cast(Value)
+
+    Set X = Me.AbsVal().Trim()
+    Set Y = Other.AbsVal().Trim()
+
+    If X.IsZero() Then  'zero edge cases
+	Set GCD = Y
+	Exit Function
+    End If
+    If Y.IsZero() Then
+	Set GCD = X
+	Exit Function
+    End If
+
+    If X.lScale > Y.lScale Then
+	MaxScale = X.lScale
+    Else
+	MaxScale = Y.lScale
+    End If
+
+    Set X = X.Shift(MaxScale)
+    Set Y = Y.Shift(MaxScale)
+
+    Do While Not Y.IsZero()
+	Set Remainder = X.Remdr(Y)
+
+	Set X = Y
+	Set Y = Remainder
+
+	Yield.Events
+    Loop
+
+    Set GCD = X.Shift(-MaxScale)
+
+    DebugPrint GCD, "GCD"
+End Function
+
+'***************************************
+'
+'       Least Common Multiple
+'
+'***************************************
+
+Public Function LCM(Value As Variant) As BigDecimal
+    Dim Other As BigDecimal
+
+    Set Other = Cast(Value)
+
+    If Me.IsZero() Or Other.IsZero() Then
+	Set LCM = New BigDecimal
+	LCM = BigZero
+	Exit Function
+    End If
+
+    Set LCM = Me.Divide(Me.GCD(Other)).Times(Other).AbsVal()
+
+    DebugPrint LCM, "LCM"
+End Function
+
+'***************************************
+'
 '               Factorial
 '
 '***************************************
 
 Public Function Fact() As BigDecimal
-    Dim One As BigDecimal
-    Dim Two As BigDecimal
-    Dim i As BigDecimal
-
-    Set Fact = New BigDecimal
-
-    Set One = New BigDecimal
-    Set Two = New BigDecimal
-    Set i = New BigDecimal
+    Dim X As BigDecimal
 
     If Big_lScale <> 0 Then
-	Err.Raise vbObjectError + 1103, "BigDecimal", "Factorial of a fraction is not permtted."
+	Err.Raise vbObjectError + 1106, "BigDecimal", "Factorial of a fraction is not permtted."
     End If
 
-    One = 1
-    Two = 2
-    Fact = One
-    i = Two
+    Set Fact = BigOne
+    Set X = BigTwo
 
-    While IsGE(i)   'me >= i
-	Fact = Fact.Times(i)
-	i = i.Plus(One)
+    While Me.IsGE(X)   'me >= X
+	Set Fact = Fact.Times(X)
+	Set X = X.Plus(BigOne)
 
 	Yield.Events
     Wend
@@ -660,28 +702,24 @@ End Function
 
 Public Function AbsVal() As BigDecimal
     Dim Res_Int As Long, Res_Dot As Long, Res_Frac As Long
-    Dim Res_Value As String
+    Dim Res_Bytes() As Byte
 
     Set AbsVal = New BigDecimal
 
-    Res_Value = Big_sValue
-    Res_Int = Big_lInt
-    Res_Dot = Big_lDot
-    Res_Frac = Big_lFrac
-
-    If Big_lSign < 0 Then
-	Res_Value = Mid$(Res_Value, 2)
-	Res_Int = Res_Int - 1
-	Res_Dot = Res_Dot - 1
-	Res_Frac = Res_Frac - 1
+    If Big_lSign > 0 Then
+	AbsVal.SetRaw Big_sValue, Big_lSign, Big_lInt, Big_lDot, Big_lFrac, Big_lScale
+	DebugPrint AbsVal, "AbsVal"
+	Exit Function
     End If
 
-    AbsVal.sValue = Res_Value
-    AbsVal.lSign = 1
-    AbsVal.lInt = Res_Int
-    AbsVal.lDot = Res_Dot
-    AbsVal.lFrac = Res_Frac
-    AbsVal.lScale = Big_lScale
+    Res_Bytes = Big_sValue
+
+    RemoveCh Res_Bytes
+    Res_Int = Big_lInt - 1
+    Res_Dot = Big_lDot - 1
+    Res_Frac = Big_lFrac - 1
+
+    AbsVal.SetRawB Res_Bytes, 1, Res_Int, Res_Dot, Res_Frac, Big_lScale
 
     DebugPrint AbsVal, "AbsVal"
 End Function
@@ -694,11 +732,11 @@ End Function
 
 Public Function Neg() As BigDecimal
     Dim Res_Sign As Long, Res_Int As Long, Res_Dot As Long, Res_Frac As Long
-    Dim Res_Value As String
+    Dim Res_Bytes() As Byte
 
     Set Neg = New BigDecimal
 
-    Res_Value = Big_sValue
+    Res_Bytes = Big_sValue
     Res_Sign = Big_lSign
     Res_Int = Big_lInt
     Res_Dot = Big_lDot
@@ -706,27 +744,60 @@ Public Function Neg() As BigDecimal
 
     Select Case CmpTo(0)
     Case -1     'Me < 0
-	Res_Value = Mid$(Res_Value, 2)
+	RemoveCh Res_Bytes
 	Res_Sign = 1
 	Res_Int = Res_Int - 1
 	Res_Dot = Res_Dot - 1
 	Res_Frac = Res_Frac - 1
     Case 1      'Me > 0
-	Res_Value = "-" & Res_Value
+	PrependCh Res_Bytes, "-"
 	Res_Sign = -1
 	Res_Int = Res_Int + 1
 	Res_Dot = Res_Dot + 1
 	Res_Frac = Res_Frac + 1
     End Select
 
-    Neg.sValue = Res_Value
-    Neg.lSign = Res_Sign
-    Neg.lInt = Res_Int
-    Neg.lDot = Res_Dot
-    Neg.lFrac = Res_Frac
-    Neg.lScale = Big_lScale
+    Neg.SetRawB Res_Bytes, Res_Sign, Res_Int, Res_Dot, Res_Frac, Big_lScale
 
     DebugPrint Neg, "Neg"
+End Function
+
+'***************************************
+'
+'               Floor
+'
+'***************************************
+
+Public Function Floor() As BigDecimal
+    If Big_lScale = 0 Or Me.IsZero() Then
+	Set Floor = New BigDecimal
+	Floor = Me
+    ElseIf Me.IsPos() Then
+	Set Floor = Me.Trunc()
+    Else    'is negative
+	Set Floor = Me.Trunc().Minus(BigOne)
+    End If
+
+    DebugPrint Floor, "Floor"
+End Function
+
+'***************************************
+'
+'               Ceiling
+'
+'***************************************
+
+Public Function Ceiling() As BigDecimal
+    If Big_lScale = 0 Or Me.IsZero() Then
+	Set Ceiling = New BigDecimal
+	Ceiling = Me
+    ElseIf Me.IsPos() Then
+	Set Ceiling = Me.Trunc().Plus(BigOne)
+    Else    'is negative
+	Set Ceiling = Me.Trunc()
+    End If
+
+    DebugPrint Ceiling, "Ceiling"
 End Function
 
 '***************************************
@@ -736,27 +807,19 @@ End Function
 '***************************************
 
 Public Function Trunc() As BigDecimal
-    Dim Res_Frac As Long, Res_Scale As Long
     Dim Res_Value As String
 
     Set Trunc = New BigDecimal
 
-    Res_Value = Big_sValue
-    Res_Frac = Big_lFrac
-    Res_Scale = Big_lScale
-
-    If Big_lScale > 0 Then
-	Res_Value = Mid$(Res_Value, 1, Big_lDot - 1)
-	Res_Frac = Big_lDot
-	Res_Scale = 0
+    If Big_lScale = 0 Then
+	Trunc.SetRaw Big_sValue, Big_lSign, Big_lInt, Big_lDot, Big_lFrac, Big_lScale
+	DebugPrint Trunc, "Trunc"
+	Exit Function
     End If
 
-    Trunc.sValue = Res_Value
-    Trunc.lSign = Big_lSign
-    Trunc.lInt = Big_lInt
-    Trunc.lDot = Big_lDot
-    Trunc.lFrac = Res_Frac
-    Trunc.lScale = Res_Scale
+    Res_Value = Mid$(Big_sValue, 1, Big_lDot - 1)
+
+    Trunc.SetRaw Res_Value, Big_lSign, Big_lInt, Big_lDot, Big_lDot, 0
 
     DebugPrint Trunc, "Trunc"
 End Function
@@ -785,14 +848,60 @@ Public Function Frac() As BigDecimal
     Wend
     Res_Int = Res_Dot - 1
 
-    Frac.sValue = Res_Value
-    Frac.lSign = Big_lSign
-    Frac.lInt = Res_Int
-    Frac.lDot = Res_Dot
-    Frac.lFrac = Big_lFrac
-    Frac.lScale = Big_lScale
+    Frac.SetRaw Res_Value, Big_lSign, Res_Int, Res_Dot, Big_lFrac, Big_lScale
 
     DebugPrint Frac, "Frac"
+End Function
+
+'***************************************
+'
+'          Shift Decimal Point
+'
+'***************************************
+
+Public Function Shift(ByVal Value As Long) As BigDecimal
+    Dim Res_Value As String, Result_Value As String
+    Dim Result_Dot As Long, Res_Dot As Long, Pad As Long
+
+    Set Shift = New BigDecimal
+
+    If IsZero() Or Value = 0 Then
+	Shift = Me
+	Exit Function
+    End If
+
+    If Big_lScale > 0 Then
+	Res_Value = Replace(Big_sValue, ".", "")
+	Res_Dot = Big_lDot - 1
+    Else
+	Res_Value = Big_sValue
+	Res_Dot = Len(Res_Value)
+    End If
+
+    If Big_lSign < 0 Then
+	Res_Value = Mid$(Res_Value, 2)
+	Res_Dot = Res_Dot - 1
+    End If
+
+    Result_Dot = Res_Dot + Value
+
+    If Result_Dot <= 0 Then                     'pad left
+	Pad = Abs(Result_Dot)
+	Result_Value = "0." & String$(Pad, "0") & Res_Value
+    ElseIf Result_Dot >= Len(Res_Value) Then    'pad right
+	Pad = Result_Dot - Len(Res_Value)
+	Result_Value = Res_Value & String$(Pad, "0")
+    Else                                        'no pad
+	Result_Value = Left$(Res_Value, Result_Dot) & "." & Mid$(Res_Value, Result_Dot + 1)
+    End If
+
+    If Big_lSign < 0 Then
+	Result_Value = "-" & Result_Value
+    End If
+
+    Shift = Result_Value
+
+    DebugPrint Shift, "Shift"
 End Function
 
 '***************************************
@@ -907,12 +1016,7 @@ Public Function Round(ByVal Tar_Scale As Long, Optional ByVal Add_Trailing_Zeroe
 	Res_Frac = Res_Frac + 1
     End If
 
-    Round.sValue = Res_Value
-    Round.lSign = Res_Sign
-    Round.lInt = Res_Int
-    Round.lDot = Res_Dot
-    Round.lFrac = Res_Frac
-    Round.lScale = Res_Scale
+    Round.SetRaw Res_Value, Res_Sign, Res_Int, Res_Dot, Res_Frac, Res_Scale
 
     DebugPrint Round, "Round"
 End Function
@@ -926,7 +1030,7 @@ End Function
 Public Function Trim() As BigDecimal
     Dim Res_Sign As Long, Res_Int As Long, Res_Dot As Long, Res_Frac As Long, Res_Scale As Long
     Dim Res_Value As String
-    Dim pos As Long
+    Dim pos As Long, spos As Long, Num As Long
 
     Set Trim = New BigDecimal
 
@@ -941,34 +1045,39 @@ Public Function Trim() As BigDecimal
     If Res_Sign < 0 Then
 	pos = pos + 1
 
-	While Res_Int > pos
-	    Res_Value = "-" & Mid$(Res_Value, pos + 1)
+	Num = Res_Int - pos
+	If Num > 0 Then
+	    Res_Value = "-" & Mid$(Res_Value, pos + Num)
 
-	    Res_Int = Res_Int - 1
-	    Res_Dot = Res_Dot - 1
-	    Res_Frac = Res_Frac - 1
-
-	    Yield.Events
-	Wend
+	    Res_Int = Res_Int - Num
+	    Res_Dot = Res_Dot - Num
+	    Res_Frac = Res_Frac - Num
+	End If
     Else
-	While Res_Int > pos
-	    Res_Value = Mid$(Res_Value, pos + 1)
+	Num = Res_Int - pos
+	If Num > 0 Then
+	    Res_Value = Mid$(Res_Value, pos + Num)
 
-	    Res_Int = Res_Int - 1
-	    Res_Dot = Res_Dot - 1
-	    Res_Frac = Res_Frac - 1
-
-	    Yield.Events
-	Wend
+	    Res_Int = Res_Int - Num
+	    Res_Dot = Res_Dot - Num
+	    Res_Frac = Res_Frac - Num
+	End If
     End If
 
     If Res_Scale > 0 Then
-	While Mid$(Res_Value, Res_Frac + Res_Scale - 1, 1) = "0"
-	    Res_Value = Left$(Res_Value, Len(Res_Value) - 1)
-	    Res_Scale = Res_Scale - 1
+	Num = 0
+	spos = Res_Frac + Res_Scale - 1
+	While Mid$(Res_Value, spos, 1) = "0"
+	    Num = Num + 1
+	    spos = spos - 1
 
 	    Yield.Events
 	Wend
+	If Num > 0 Then
+	    Res_Value = Left$(Res_Value, Len(Res_Value) - Num)
+	    Res_Scale = Res_Scale - Num
+	End If
+
 	If Res_Scale = 0 Then
 	    Res_Value = Left$(Res_Value, Len(Res_Value) - 1)
 	    Res_Frac = Res_Frac - 1
@@ -983,12 +1092,7 @@ Public Function Trim() As BigDecimal
 	Res_Frac = Res_Frac - 1
     End If
 
-    Trim.sValue = Res_Value
-    Trim.lSign = Res_Sign
-    Trim.lInt = Res_Int
-    Trim.lDot = Res_Dot
-    Trim.lFrac = Res_Frac
-    Trim.lScale = Res_Scale
+    Trim.SetRaw Res_Value, Res_Sign, Res_Int, Res_Dot, Res_Frac, Res_Scale
 
     DebugPrint Trim, "Trim"
 End Function
@@ -1000,11 +1104,7 @@ End Function
 '***************************************
 
 Public Function IsZero() As Boolean
-    Dim Zero As BigDecimal
-
-    Set Zero = New BigDecimal
-
-    IsZero = (CmpTo(Zero) = 0)    'Me = 0
+    IsZero = (Me.CmpTo(BigZero) = 0)    'Me = 0
 End Function
 
 '***************************************
@@ -1014,11 +1114,7 @@ End Function
 '***************************************
 
 Public Function IsNeg() As Boolean
-    Dim Zero As BigDecimal
-
-    Set Zero = New BigDecimal
-
-    IsNeg = (CmpTo(Zero) < 0)    'Me < 0
+    IsNeg = (Me.CmpTo(BigZero) < 0)    'Me < 0
 End Function
 
 '***************************************
@@ -1028,11 +1124,7 @@ End Function
 '***************************************
 
 Public Function IsPos() As Boolean
-    Dim Zero As BigDecimal
-
-    Set Zero = New BigDecimal
-
-    IsPos = (CmpTo(Zero) > 0)    'Me > 0
+    IsPos = (Me.CmpTo(BigZero) > 0)    'Me > 0
 End Function
 
 '***************************************
@@ -1042,7 +1134,7 @@ End Function
 '***************************************
 
 Public Function IsEq(Value As Variant) As Boolean
-    IsEq = (CmpTo(Value) = 0)     'Me = Value
+    IsEq = (Me.CmpTo(Value) = 0)     'Me = Value
 End Function
 
 '***************************************
@@ -1052,7 +1144,7 @@ End Function
 '***************************************
 
 Public Function IsNEq(Value As Variant) As Boolean
-    IsNEq = (CmpTo(Value) <> 0)   'Me <> Value
+    IsNEq = (Me.CmpTo(Value) <> 0)   'Me <> Value
 End Function
 
 '***************************************
@@ -1062,7 +1154,7 @@ End Function
 '***************************************
 
 Public Function IsGT(Value As Variant) As Boolean
-    IsGT = (CmpTo(Value) > 0)     'Me > Value
+    IsGT = (Me.CmpTo(Value) > 0)     'Me > Value
 End Function
 
 '***************************************
@@ -1072,7 +1164,7 @@ End Function
 '***************************************
 
 Public Function IsLT(Value As Variant) As Boolean
-    IsLT = (CmpTo(Value) < 0)     'Me < Value
+    IsLT = (Me.CmpTo(Value) < 0)     'Me < Value
 End Function
 
 '***************************************
@@ -1082,7 +1174,7 @@ End Function
 '***************************************
 
 Public Function IsGE(Value As Variant) As Boolean
-    IsGE = (CmpTo(Value) >= 0)    'Me >= Value
+    IsGE = (Me.CmpTo(Value) >= 0)    'Me >= Value
 End Function
 
 '***************************************
@@ -1092,7 +1184,7 @@ End Function
 '***************************************
 
 Public Function IsLE(Value As Variant) As Boolean
-    IsLE = (CmpTo(Value) <= 0)    'Me <= Value
+    IsLE = (Me.CmpTo(Value) <= 0)    'Me <= Value
 End Function
 
 '***************************************
@@ -1201,7 +1293,7 @@ Friend Function Parse() As Long
 	Exit Function
     End If
 
-    While Mid$(Big_sValue, Big_lInt, 1) = "0" And Big_lInt + 1 < Big_lDot    'find first non-zero digit except before .
+    While Mid$(Big_sValue, Big_lInt, 1) = "0" And Big_lInt + 1 < Big_lDot    'find first non-zero digit except before '.'
 	Big_lInt = Big_lInt + 1
 
 	Yield.Events
@@ -1234,48 +1326,51 @@ Friend Function Parse() As Long
 End Function
 
 Private Function Cast(Other As Variant) As BigDecimal
-   If IsObject(Other) Then
+    Set Cast = New BigDecimal
+
+    If IsObject(Other) Then
 	Select Case TypeName(Other)
 	    Case "BigDecimal"
-		Set Cast = Other     'quick, return object pointer
-
+		Set Cast = Other    'fast pointer copy
 	    Case "Nothing"
-		Err.Raise vbObjectError + 1104, "BigDecimal", "Can't cast Nothing to BigDecimal."
+		Err.Raise vbObjectError + 1107, "BigDecimal", "Can't cast Nothing to BigDecimal."
 
 	    Case Else
-		Err.Raise vbObjectError + 1105, "BigDecimal", "Can't cast object " & TypeName(Other) & " to BigDecimal."
+		Err.Raise vbObjectError + 1108, "BigDecimal", "Can't cast object " & TypeName(Other) & " to BigDecimal."
 	End Select
     Else
 	Select Case VarType(Other)
 	    Case vbInteger, vbLong, vbSingle, vbDouble, vbString
-		Set Cast = New BigDecimal
-
 		Cast.sValue = CStr(Other)
 		If Cast.Parse() = -1 Then
-		    Err.Raise vbObjectError + 1106, "BigDecimal", TypeName(Other) & " is a malformed BigDecimal number."
+		    Err.Raise vbObjectError + 1109, "BigDecimal", TypeName(Other) & " is a malformed BigDecimal number."
 		End If
 
 	    Case Else
-		Err.Raise vbObjectError + 1107, "BigDecimal", "Can't cast " & TypeName(Other) & " to a BigDecimal."
+		Err.Raise vbObjectError + 1110, "BigDecimal", "Can't cast " & TypeName(Other) & " to a BigDecimal."
 	End Select
     End If
 End Function
 
 Private Function Plus_Positive(Other As BigDecimal, Final_Sign As Long) As BigDecimal
-    Dim lLen As Long, oLen As Long
+    Dim Oth_Sign As Long, Oth_Int As Long, Oth_Dot As Long, Oth_Frac As Long, Oth_Scale As Long
     Dim Res_Int As Long, Res_Dot As Long, Res_Frac As Long, Res_Scale As Long
     Dim Result_Len As Long, Result_Scale As Long, Result_Size As Long
     Dim Big_sBytes() As Byte, Other_Bytes() As Byte, Res_Bytes() As Byte
+    Dim lLen As Long, oLen As Long
+    Dim Oth_Value As String
     Dim i As Long, um As Long
     Dim pos As Long, Was_Frac As Long
 
     Set Plus_Positive = New BigDecimal
 
+    Other.GetRaw Oth_Value, Oth_Sign, Oth_Int, Oth_Dot, Oth_Frac, Oth_Scale
+
     lLen = Big_lDot - Big_lInt
-    oLen = Other.lDot - Other.lInt
+    oLen = Oth_Dot - Oth_Int
 
     Result_Len = Application.WorksheetFunction.Max(lLen, oLen) + 1
-    Result_Scale = Application.WorksheetFunction.Max(Big_lScale, Other.lScale)
+    Result_Scale = Application.WorksheetFunction.Max(Big_lScale, Oth_Scale)
     Result_Size = Result_Len + Result_Scale + 3
 
     um = 0
@@ -1283,15 +1378,15 @@ Private Function Plus_Positive(Other As BigDecimal, Final_Sign As Long) As BigDe
     Was_Frac = 0
 
     Big_sBytes = Big_sValue
-    Other_Bytes = Other.sValue
+    Other_Bytes = Oth_Value
     Res_Bytes = String$(Result_Size, "0")
 
     For i = Result_Scale - 1 To 0 Step -1
 	If i < Big_lScale Then
 	    um = um + Big_sBytes((Big_lFrac + i - 1) * 2) - Asc_0
 	End If
-	If i < Other.lScale Then
-	    um = um + Other_Bytes((Other.lFrac + i - 1) * 2) - Asc_0
+	If i < Oth_Scale Then
+	    um = um + Other_Bytes((Oth_Frac + i - 1) * 2) - Asc_0
 	End If
 
 	If um <> 0 Or Was_Frac Then
@@ -1319,7 +1414,7 @@ Private Function Plus_Positive(Other As BigDecimal, Final_Sign As Long) As BigDe
 	    um = um + Big_sBytes((Big_lDot - i - 2) * 2) - Asc_0
 	End If
 	If i < oLen Then
-	    um = um + Other_Bytes((Other.lDot - i - 2) * 2) - Asc_0
+	    um = um + Other_Bytes((Oth_Dot - i - 2) * 2) - Asc_0
 	End If
 
 	pos = pos - 1
@@ -1344,32 +1439,31 @@ Private Function Plus_Positive(Other As BigDecimal, Final_Sign As Long) As BigDe
 	Res_Frac = Res_Frac + 1
     End If
 
-    Plus_Positive.sValue = Res_Bytes
-    Plus_Positive.lSign = Final_Sign
-    Plus_Positive.lInt = Res_Int
-    Plus_Positive.lDot = Res_Dot
-    Plus_Positive.lFrac = Res_Frac
-    Plus_Positive.lScale = Res_Scale
+    Plus_Positive.SetRawB Res_Bytes, Final_Sign, Res_Int, Res_Dot, Res_Frac, Res_Scale
 
     DebugPrint Plus_Positive, "Plus_Positive"
 End Function
 
-Private Function Minus_Positive(Other As BigDecimal, Final_Sign As Long) As BigDecimal
+Friend Function Minus_Positive(Other As BigDecimal, Final_Sign As Long) As BigDecimal
+    Dim Oth_Sign As Long, Oth_Int As Long, Oth_Dot As Long, Oth_Frac As Long, Oth_Scale As Long
     Dim lLen As Long, oLen As Long
     Dim Res_Int As Long, Res_Dot As Long, Res_Frac As Long, Res_Scale As Long
     Dim Result_Len As Long, Result_Scale As Long, Result_Size As Long
     Dim Big_sBytes() As Byte, Other_Bytes() As Byte, Res_Bytes() As Byte
     Dim i As Long, um As Long, next_um As Long
+    Dim Oth_Value As String
     Dim pos As Long
     Dim Was_Frac As Long
 
     Set Minus_Positive = New BigDecimal
 
+    Other.GetRaw Oth_Value, Oth_Sign, Oth_Int, Oth_Dot, Oth_Frac, Oth_Scale
+
     lLen = Big_lDot - Big_lInt
-    oLen = Other.lDot - Other.lInt
+    oLen = Oth_Dot - Oth_Int
 
     Result_Len = lLen
-    Result_Scale = Application.WorksheetFunction.Max(Big_lScale, Other.lScale)
+    Result_Scale = Application.WorksheetFunction.Max(Big_lScale, Oth_Scale)
     Result_Size = Result_Len + Result_Scale + 3
 
     um = 0
@@ -1378,7 +1472,7 @@ Private Function Minus_Positive(Other As BigDecimal, Final_Sign As Long) As BigD
     Was_Frac = 0
 
     Big_sBytes = Big_sValue
-    Other_Bytes = Other.sValue
+    Other_Bytes = Oth_Value
     Res_Bytes = String$(Result_Size, "0")
 
     For i = Result_Scale - 1 To 0 Step -1
@@ -1388,8 +1482,8 @@ Private Function Minus_Positive(Other As BigDecimal, Final_Sign As Long) As BigD
 	    um = um + Big_sBytes((Big_lFrac + i - 1) * 2) - Asc_0
 	End If
 
-	If i < Other.lScale Then
-	    um = um - Other_Bytes((Other.lFrac + i - 1) * 2) + Asc_0
+	If i < Oth_Scale Then
+	    um = um - Other_Bytes((Oth_Frac + i - 1) * 2) + Asc_0
 	End If
 
 	If um < 0 Then
@@ -1423,7 +1517,7 @@ Private Function Minus_Positive(Other As BigDecimal, Final_Sign As Long) As BigD
 	um = um + Big_sBytes((Big_lDot - i - 2) * 2) - Asc_0
 
 	If i < oLen Then
-	    um = um - Other_Bytes((Other.lDot - i - 2) * 2) + Asc_0
+	    um = um - Other_Bytes((Oth_Dot - i - 2) * 2) + Asc_0
 	End If
 
 	If um < 0 Then
@@ -1454,36 +1548,35 @@ Private Function Minus_Positive(Other As BigDecimal, Final_Sign As Long) As BigD
 	Res_Frac = Res_Frac + 1
     End If
 
-    Minus_Positive.sValue = Res_Bytes
-    Minus_Positive.lSign = Final_Sign
-    Minus_Positive.lInt = Res_Int
-    Minus_Positive.lDot = Res_Dot
-    Minus_Positive.lFrac = Res_Frac
-    Minus_Positive.lScale = Res_Scale
+    Minus_Positive.SetRawB Res_Bytes, Final_Sign, Res_Int, Res_Dot, Res_Frac, Res_Scale
 
     DebugPrint Minus_Positive, "Minus_Positive"
 End Function
 
 Private Function Times_Positive(Other As BigDecimal, Final_Sign As Long) As BigDecimal
+    Dim Oth_Sign As Long, Oth_Int As Long, Oth_Dot As Long, Oth_Frac As Long, Oth_Scale As Long
     Dim lLen As Long, oLen As Long, i As Long, j As Long, X As Long, Y As Long
     Dim Res_Int As Long, Res_Dot As Long, Res_Frac As Long, Res_Scale As Long
     Dim Result_Len As Long, Result_Scale As Long, Result_Size As Long
     Dim Big_sBytes() As Byte, Other_Bytes() As Byte, Res_Bytes() As Byte
-    Dim Res() As Long, pos As Long, k As Long
+    Dim Res() As Long, pos As Long, K As Long
+    Dim Oth_Value As String
 
     Set Times_Positive = New BigDecimal
 
+    Other.GetRaw Oth_Value, Oth_Sign, Oth_Int, Oth_Dot, Oth_Frac, Oth_Scale
+
     lLen = Big_lDot - Big_lInt
-    oLen = Other.lDot - Other.lInt
+    oLen = Oth_Dot - Oth_Int
 
     Result_Len = lLen + oLen
-    Result_Scale = Big_lScale + Other.lScale
+    Result_Scale = Big_lScale + Oth_Scale
     Result_Size = Result_Len + Result_Scale + 3
 
     ReDim Res(Result_Size - 1)
 
     Big_sBytes = Big_sValue
-    Other_Bytes = Other.sValue
+    Other_Bytes = Oth_Value
     Res_Bytes = String$(Result_Size, "0")
 
     For i = -Big_lScale To lLen - 1
@@ -1493,11 +1586,11 @@ Private Function Times_Positive(Other As BigDecimal, Final_Sign As Long) As BigD
 	    X = Big_sBytes((Big_lDot - i - 2) * 2) - Asc_0
 	End If
 
-	For j = -Other.lScale To oLen - 1
+	For j = -Oth_Scale To oLen - 1
 	    If j < 0 Then
-		Y = Other_Bytes((Other.lFrac - j - 2) * 2) - Asc_0
+		Y = Other_Bytes((Oth_Frac - j - 2) * 2) - Asc_0
 	    Else
-		Y = Other_Bytes((Other.lDot - j - 2) * 2) - Asc_0
+		Y = Other_Bytes((Oth_Dot - j - 2) * 2) - Asc_0
 	    End If
 	    Res(i + j + Result_Scale) = Res(i + j + Result_Scale) + (X * Y)
 
@@ -1515,12 +1608,12 @@ Private Function Times_Positive(Other As BigDecimal, Final_Sign As Long) As BigD
     Next i
 
     pos = Result_Size + 1
-    For k = 0 To Result_Scale - 1
+    For K = 0 To Result_Scale - 1
 	pos = pos - 1
-	Res_Bytes((pos - 1) * 2) = Res(k) + Asc_0
+	Res_Bytes((pos - 1) * 2) = Res(K) + Asc_0
 
 	Yield.Events
-    Next k
+    Next K
 
     Res_Scale = Result_Size - pos + 1
     Res_Frac = pos
@@ -1553,48 +1646,47 @@ Private Function Times_Positive(Other As BigDecimal, Final_Sign As Long) As BigD
 	Res_Frac = Res_Frac + 1
     End If
 
-    Times_Positive.sValue = Res_Bytes
-    Times_Positive.lSign = Final_Sign
-    Times_Positive.lInt = Res_Int
-    Times_Positive.lDot = Res_Dot
-    Times_Positive.lFrac = Res_Frac
-    Times_Positive.lScale = Res_Scale
+    Times_Positive.SetRawB Res_Bytes, Final_Sign, Res_Int, Res_Dot, Res_Frac, Res_Scale
 
     DebugPrint Times_Positive, "Times_Positive"
 End Function
 
 Private Function Divide_Positive(Other As BigDecimal, Final_Sign As Long) As BigDecimal
+    Dim Oth_Sign As Long, Oth_Int As Long, Oth_Dot As Long, Oth_Frac As Long, Oth_Scale As Long
     Dim lLen As Long, oLen As Long, Final_Scale As Long
     Dim Res_Int As Long, Res_Dot As Long, Res_Frac As Long, Res_Scale As Long
     Dim Result_Len As Long, Result_Scale As Long, Result_Size As Long
     Dim Big_sBytes() As Byte, Other_Bytes() As Byte, Res_Bytes() As Byte
     Dim dividend_len As Long, divider_len As Long, divider_skip As Long
-    Dim i As Long, j As Long, X As Long, idx As Long
+    Dim i As Long, j As Long, X As Long, Idx As Long
     Dim cur_pow As Long, pos As Long
     Dim beg As Long, real_beg As Long
+    Dim Oth_Value As String
     Dim dig As String
     Dim less As Boolean
 
     Set Divide_Positive = New BigDecimal
 
+    Other.GetRaw Oth_Value, Oth_Sign, Oth_Int, Oth_Dot, Oth_Frac, Oth_Scale
+
     lLen = Big_lDot - Big_lInt
-    oLen = Other.lDot - Other.lInt
+    oLen = Oth_Dot - Oth_Int
 
     Final_Scale = Big_lMaxScale + 1
 
-    Result_Len = Application.WorksheetFunction.Max(lLen + Other.lScale - oLen + 1, 1)
+    Result_Len = Application.WorksheetFunction.Max(lLen + Oth_Scale - oLen + 1, 1)
     Result_Scale = Final_Scale
     Result_Size = Result_Len + Result_Scale + 3
 
     Big_sBytes = Big_sValue
-    Other_Bytes = Other.sValue
+    Other_Bytes = Oth_Value
 
-    If Other.lScale = 0 And Other_Bytes((Other.lInt - 1) * 2) = Asc_0 Then
-	Err.Raise vbObjectError + 1108, "BigDecimal", "Division By ZERO is undefined."
+    If Oth_Scale = 0 And Other_Bytes((Oth_Int - 1) * 2) = Asc_0 Then
+	Err.Raise vbObjectError + 1111, "BigDecimal", "Division By ZERO is undefined."
     End If
 
     dividend_len = lLen + Big_lScale
-    divider_len = oLen + Other.lScale
+    divider_len = oLen + Oth_Scale
 
     ReDim dividend(0 To Result_Size + dividend_len + divider_len - 1) As Long
     ReDim divider(0 To divider_len - 1) As Long
@@ -1610,21 +1702,21 @@ Private Function Divide_Positive(Other As BigDecimal, Final_Sign As Long) As Big
 	Yield.Events
     Next i
 
-    For i = -Other.lScale To oLen - 1
+    For i = -Oth_Scale To oLen - 1
 	If i < 0 Then
-	    X = Other_Bytes((Other.lFrac - i - 2) * 2) - Asc_0
+	    X = Other_Bytes((Oth_Frac - i - 2) * 2) - Asc_0
 	Else
-	    X = Other_Bytes((Other.lDot - i - 2) * 2) - Asc_0
+	    X = Other_Bytes((Oth_Dot - i - 2) * 2) - Asc_0
 	End If
 	divider(oLen - i - 1) = X
 
 	Yield.Events
     Next i
 
-    idx = 0
+    Idx = 0
     divider_skip = 0
-    While divider_len > 0 And divider(idx) = 0
-	idx = idx + 1
+    While divider_len > 0 And divider(Idx) = 0
+	Idx = Idx + 1
 	divider_skip = divider_skip + 1
 	divider_len = divider_len - 1
 
@@ -1636,7 +1728,7 @@ Private Function Divide_Positive(Other As BigDecimal, Final_Sign As Long) As Big
     pos = 2
 
     If cur_pow < -Final_Scale Then
-	idx = idx - divider_skip
+	Idx = Idx - divider_skip
 	divider_len = divider_len + divider_skip
 	Exit Function
     End If
@@ -1676,8 +1768,8 @@ Private Function Divide_Positive(Other As BigDecimal, Final_Sign As Long) As Big
 
 	    If real_beg = beg Then
 		For i = 0 To divider_len - 1
-		    If dividend(beg + i) <> divider(i + idx) Then
-			less = (dividend(beg + i) < divider(i + idx))
+		    If dividend(beg + i) <> divider(i + Idx) Then
+			less = (dividend(beg + i) < divider(i + Idx))
 			Exit For
 		    End If
 
@@ -1690,7 +1782,7 @@ Private Function Divide_Positive(Other As BigDecimal, Final_Sign As Long) As Big
 	    End If
 
 	    For i = divider_len - 1 To 0 Step -1
-		dividend(beg + i) = dividend(beg + i) - divider(i + idx)
+		dividend(beg + i) = dividend(beg + i) - divider(i + Idx)
 		If dividend(beg + i) < 0 Then
 		    dividend(beg + i) = dividend(beg + i) + 10
 		    dividend(beg + i - 1) = dividend(beg + i - 1) - 1
@@ -1722,7 +1814,7 @@ Private Function Divide_Positive(Other As BigDecimal, Final_Sign As Long) As Big
 
     Res_Scale = Result_Size - Res_Frac + 1
 
-    idx = idx - divider_skip
+    Idx = Idx - divider_skip
     divider_len = divider_len + divider_skip
 
     While Res_Bytes((Res_Int - 1) * 2) = Asc_0 And Res_Int + 1 < Res_Dot
@@ -1738,28 +1830,27 @@ Private Function Divide_Positive(Other As BigDecimal, Final_Sign As Long) As Big
 	Res_Frac = Res_Frac + 1
     End If
 
-    Divide_Positive.sValue = Res_Bytes
-    Divide_Positive.lSign = Final_Sign
-    Divide_Positive.lInt = Res_Int
-    Divide_Positive.lDot = Res_Dot
-    Divide_Positive.lFrac = Res_Frac
-    Divide_Positive.lScale = Res_Scale
+    Divide_Positive.SetRawB Res_Bytes, Final_Sign, Res_Int, Res_Dot, Res_Frac, Res_Scale
 
     DebugPrint Divide_Positive, "divide_positive"
 End Function
 
 Private Function Compare_Positive(Other As BigDecimal) As Long
+    Dim Oth_Sign As Long, Oth_Int As Long, Oth_Dot As Long, Oth_Frac As Long, Oth_Scale As Long
     Dim lLen As Long, oLen As Long, i As Long
     Dim lchar As Long, ochar As Long, Res_Scale As Long
     Dim Big_sBytes() As Byte, Other_Bytes() As Byte
+    Dim Oth_Value As String
+
+    Other.GetRaw Oth_Value, Oth_Sign, Oth_Int, Oth_Dot, Oth_Frac, Oth_Scale
 
     Res_Scale = Big_lMaxScale
 
     lLen = Big_lDot - Big_lInt
-    oLen = Other.lDot - Other.lInt
+    oLen = Oth_Dot - Oth_Int
 
     Big_sBytes = Big_sValue
-    Other_Bytes = Other.sValue
+    Other_Bytes = Oth_Value
 
     If lLen <> oLen Then
 	Compare_Positive = IIf(lLen < oLen, -1, 1)
@@ -1767,8 +1858,8 @@ Private Function Compare_Positive(Other As BigDecimal) As Long
     End If
 
     For i = 0 To lLen - 1
-	If Big_sBytes((Big_lInt + i - 1) * 2) <> Other_Bytes((Other.lInt + i - 1) * 2) Then
-	    Compare_Positive = IIf(Big_sBytes((Big_lInt + i - 1) * 2) < Other_Bytes((Other.lInt + i - 1) * 2), -1, 1)
+	If Big_sBytes((Big_lInt + i - 1) * 2) <> Other_Bytes((Oth_Int + i - 1) * 2) Then
+	    Compare_Positive = IIf(Big_sBytes((Big_lInt + i - 1) * 2) < Other_Bytes((Oth_Int + i - 1) * 2), -1, 1)
 	    Exit Function
 	End If
 
@@ -1782,8 +1873,8 @@ Private Function Compare_Positive(Other As BigDecimal) As Long
 	    lchar = 0
 	End If
 
-	If i < Other.lScale Then
-	    ochar = Other_Bytes((Other.lFrac + i - 1) * 2) - Asc_0
+	If i < Oth_Scale Then
+	    ochar = Other_Bytes((Oth_Frac + i - 1) * 2) - Asc_0
 	Else
 	    ochar = 0
 	End If
@@ -1798,6 +1889,33 @@ Private Function Compare_Positive(Other As BigDecimal) As Long
 
     Compare_Positive = 0
 End Function
+
+Friend Sub SetRaw(sValue As String, lSign As Long, lInt As Long, lDot As Long, lFrac As Long, lScale As Long)
+    Big_sValue = sValue
+    Big_lSign = lSign
+    Big_lInt = lInt
+    Big_lDot = lDot
+    Big_lFrac = lFrac
+    Big_lScale = lScale
+End Sub
+
+Friend Sub SetRawB(sBytes() As Byte, lSign As Long, lInt As Long, lDot As Long, lFrac As Long, lScale As Long)
+    Big_sValue = sBytes
+    Big_lSign = lSign
+    Big_lInt = lInt
+    Big_lDot = lDot
+    Big_lFrac = lFrac
+    Big_lScale = lScale
+End Sub
+
+Friend Sub GetRaw(sValue As String, lSign As Long, lInt As Long, lDot As Long, lFrac As Long, lScale As Long)
+    sValue = Big_sValue
+    lSign = Big_lSign
+    lInt = Big_lInt
+    lDot = Big_lDot
+    lFrac = Big_lFrac
+    lScale = Big_lScale
+End Sub
 
 Private Sub PrependCh(ByRef ArrB() As Byte, ByVal Ch As String)
     Dim ChB(0 To 1) As Byte
@@ -1828,6 +1946,10 @@ Private Sub RemoveCh(ByRef ArrB() As Byte)
     ReDim Preserve ArrB(0 To Size - 1)      'resize arrb
 End Sub
 
+Friend Sub Unregister()
+    BigOption.Unregister Me
+End Sub
+
 '####################### BigDecimal Properties #######################
 
 'Value
@@ -1847,7 +1969,7 @@ Public Property Let Value(Other As Variant)
 Attribute Value.VB_UserMemId = 0
    If IsObject(Other) Then
 	If Other Is Nothing Then
-	    Err.Raise vbObjectError + 1109, "BigDecimal", "BigDecimal can't be nothing."
+	    Err.Raise vbObjectError + 1112, "BigDecimal", "BigDecimal can't be nothing."
 	End If
 
 	If TypeName(Other) = "BigDecimal" Then
@@ -1866,23 +1988,23 @@ Attribute Value.VB_UserMemId = 0
 		Big_sValue = Mid$(Big_sValue, 1, Big_lDot + Big_lScale)
 	    End If
 	Else
-	    Err.Raise vbObjectError + 1110, "BigDecimal", "Can't cast object " & TypeName(Other) & " to BigDecimal."
+	    Err.Raise vbObjectError + 1113, "BigDecimal", "Can't cast object " & TypeName(Other) & " to BigDecimal."
 	End If
     Else
 	Select Case VarType(Other)
 	    Case vbInteger, vbLong, vbLongLong, vbSingle, vbDouble, vbString
 		Big_sValue = CStr(Other)
 		If Parse() = -1 Then
-		    Err.Raise vbObjectError + 1111, "BigDecimal", TypeName(Other) & " is a malformed BigDecimal number."
+		    Err.Raise vbObjectError + 1114, "BigDecimal", TypeName(Other) & " is a malformed BigDecimal number."
 		End If
 	    Case Else
-		Err.Raise vbObjectError + 1112, "BigDecimal", "Can't cast " & TypeName(Other) & " to BigDecimal."
+		Err.Raise vbObjectError + 1115, "BigDecimal", "Can't cast " & TypeName(Other) & " to BigDecimal."
 	End Select
     End If
 End Property
 
 'ValueEx
-Public Property Get ValueEx(RetType As Long) As Variant
+Public Property Get ValueEx(Optional RetType As Long = vbString) As Variant
     Select Case RetType
     Case vbInteger
 	ValueEx = CInt(Big_sValue)
@@ -1903,7 +2025,7 @@ Public Property Get ValueEx(RetType As Long) As Variant
 	    ValueEx = CStr(Trim().sValue)
 	End If
     Case Else
-	Err.Raise vbObjectError + 1113, "BigDecimal", "Unsupported variable type " & RetType
+	Err.Raise vbObjectError + 1116, "BigDecimal", "Unsupported variable type " & RetType
     End Select
 End Property
 
@@ -1925,69 +2047,6 @@ Public Property Let TarScale(NewScale As Long)
 	Big_lScale = Big_lMaxScale
 	Big_sValue = Mid$(Big_sValue, 1, Big_lDot + Big_lScale)
     End If
-End Property
-
-'Pi
-Public Property Get Pi() As BigDecimal
-    Dim i As BigDecimal
-    Dim Result As BigDecimal
-    Dim p As BigDecimal
-    Dim X As BigDecimal
-    Dim Term As BigDecimal
-    Dim Prec As BigDecimal
-    Dim One As BigDecimal
-    Dim Two As BigDecimal
-    Dim Four As BigDecimal
-    Dim Five As BigDecimal
-    Dim Six As BigDecimal
-    Dim Eight As BigDecimal
-
-    Set Pi = New BigDecimal
-    Set i = New BigDecimal
-    Set Result = New BigDecimal
-    Set p = New BigDecimal
-    Set X = New BigDecimal
-    Set Term = New BigDecimal
-    Set Prec = New BigDecimal
-    Set One = New BigDecimal
-    Set Two = New BigDecimal
-    Set Four = New BigDecimal
-    Set Five = New BigDecimal
-    Set Six = New BigDecimal
-    Set Eight = New BigDecimal
-
-    Prec = "0." & String$(Big_lMaxScale - 1, "0") & "1"
-
-    One = 1
-    Two = 2
-    Four = 4
-    Five = 5
-    Six = 6
-    Eight = 8
-
-    Term = One
-    p = One
-    X = 16
-
-    While Term.AbsVal().IsGT(Prec)
-	Term = One.Divide(p).Times(Four.Divide(i.Plus(One)).Minus(Two.Divide(i.Plus(Four))).Minus(One.Divide(i.Plus(Five))).Minus(One.Divide(i.Plus(Six))))
-	'term = (1 / p) * ((4 / (i + 1#)) - (2 / (i + 4#)) - (1 / (i + 5#)) - (1 / (i + 6#)))
-
-	i = i.Plus(Eight)
-	p = p.Times(X)
-	Result = Result.Plus(Term)
-
-	Yield.Events
-    Wend
-
-    Pi.sValue = Result.sValue
-    Pi.lSign = Result.lSign
-    Pi.lInt = Result.lInt
-    Pi.lDot = Result.lDot
-    Pi.lFrac = Result.lFrac
-    Pi.lScale = Result.lScale
-
-    DebugPrint Pi, "Pi"
 End Property
 
 'AddTrailingZeroes
@@ -2016,6 +2075,72 @@ End Property
 Public Property Let OutputDebug(Flag As Boolean)
     OptionOutputDebug = Flag
 End Property
+
+'Pi
+Friend Property Get Pi() As BigDecimal
+    Dim Prec As BigDecimal
+    Dim Term1 As BigDecimal
+    Dim Term2 As BigDecimal
+
+    Set Prec = New BigDecimal
+
+    If Big_lMaxScale <= BigOption.Pi_Scale Then
+	Set Pi = New BigDecimal
+	Pi = BigOption.Pi_Buf
+	If Big_lMaxScale < BigOption.Pi_Scale Then
+	    Pi = Pi.Round(Big_lMaxScale)
+	End If
+	Exit Property
+    End If
+
+    Prec = "0." & String$(Big_lMaxScale - 1, "0") & "1"
+
+    Set Term1 = ATanReciprocal(5, Prec).Times(16)
+    Set Term2 = ATanReciprocal(239, Prec).Times(4)
+
+    Set Pi = Term1.Minus(Term2)
+
+    BigOption.Pi_Buf = Pi.sValue
+    BigOption.Pi_Scale = Pi.lScale
+
+    DebugPrint Pi, "Pi"
+End Property
+
+Private Function ATanReciprocal(ByVal X As Long, Prec As BigDecimal) As BigDecimal
+    Dim Term As BigDecimal
+    Dim Result As BigDecimal
+    Dim X2 As BigDecimal
+    Dim Y As BigDecimal
+    Dim Sign As Long
+
+    Set Result = New BigDecimal
+    Set X2 = New BigDecimal
+    Set Y = New BigDecimal
+
+    X2 = X * X
+    Y = BigOne
+    Sign = 1
+
+    Set Term = BigOne.Divide(X)
+    Result = Term
+
+    While Term.AbsVal().IsGT(Prec)
+	Y = Y.Plus(BigTwo)
+	Sign = Sign * -1
+
+	Set Term = Term.Divide(X2)
+
+	If Sign > 0 Then
+	    Set Result = Result.Plus(Term.Divide(Y))
+	Else
+	    Set Result = Result.Minus(Term.Divide(Y))
+	End If
+
+	Yield.Events
+    Wend
+
+    Set ATanReciprocal = Result
+End Function
 
 'sValue
 Friend Property Get sValue() As String
