@@ -5,10 +5,6 @@ All notable changes to the BigNumber Add-in will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-# Changelog
-
-All notable changes to the BigDecimal Add-in will be documented in this file.
-
 ---
 
 ## [1.5] - 2026-06-14
