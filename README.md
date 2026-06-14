@@ -1,12 +1,12 @@
 # BigDecimal Addin for VBA
-BigDecimal is a high-performance, arbitrary-precision decimal library designed to break the 15-digit precision barrier of standard Excel calculations. Heavily inspired by the robust BigDecimal implementations found in enterprise languages like Java, this add-in brings industrial-grade numerical accuracy directly to your spreadsheets.
+`BigDecimal` is a high-performance, arbitrary-precision decimal library designed to break the 15-digit precision barrier of standard Excel calculations. Heavily inspired by the robust BigDecimal implementations found in enterprise languages like Java, this add-in brings industrial-grade numerical accuracy directly to your spreadsheets.
 
 Whether you are performing complex financial reconciliations or deep scientific research, BigDecimal ensures that your results are never compromised by floating-point errors or rounding limitations.
 
-To demonstrate the precision and performance of the underlying engine, this add-in includes BigCalculator—a standalone interactive interface built directly in Excel. This calculator allows users to perform real-time, arbitrary-precision calculations and experiment with the expanded scientific function suite without needing to write a single formula. It serves as a perfect "sandbox" to verify results and visualize the extreme decimal accuracy that BigDecimal provides before implementing it into your primary workbooks.
+To demonstrate the precision and performance of the underlying engine, this add-in includes `BigCalculator`—a standalone interactive interface built directly in Excel. This calculator allows users to perform real-time, arbitrary-precision calculations and experiment with the expanded scientific function suite without needing to write a single formula. It serves as a perfect "sandbox" to verify results and visualize the extreme decimal accuracy that BigDecimal provides before implementing it into your primary workbooks.
 
 <p align="center">
-  <img src="Assets/BigCalculator.jpg" alt="BigCalculator Screenshot">
+  <img src="Assets/BigCalculator.jpg" width="50%" alt="BigCalculator Screenshot">
 </p>
 
 ## Key Capabilities
@@ -21,7 +21,7 @@ Standard Excel uses the IEEE 754 floating-point standard, which is excellent for
 ## Installation & Usage
 
 1. Download the Release files.
-2. Unzip and unblock BigDecimal v1.2.xlam
+2. Unzip and unblock BigDecimal v1.5.xlam
 3. Move the add-in into the %AppData%\Microsoft\Addins folder
 4. Import the required components into your VBA Project.
 5. Start using the BigDecimal Class.
