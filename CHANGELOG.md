@@ -11,6 +11,125 @@ All notable changes to the BigDecimal Add-in will be documented in this file.
 
 ---
 
+## [1.5] - 2026-06-14
+
+### Added
+
+- Added reusable BigDecimal constants:
+
+  - `BigZero`
+  - `BigOne`
+  - `BigTwo`
+
+  These constants are instantiated once and reused for the lifetime of the application, reducing object creation overhead.
+
+- Added the `BigPi` constant.
+
+  - Honors the current `TarScale` setting when calculating the standard value of π.
+
+- Added the `BigOption.Cache` property.
+
+  - Allows the internal cache to be enabled or disabled.
+  - Facilitates automated testing and benchmarking.
+
+- Added an abort mechanism to the Yield Manager.
+
+  - Users can press and hold the **Esc** key to display an abort dialog.
+  - Available options include:
+    - Continue
+    - End
+    - Debug
+    - Help
+  - Improves control during long-running calculations while Excel is displaying a "Not Responding" state.
+
+- Added new BigDecimal methods:
+
+  - `Floor()` – Returns the greatest integer less than or equal to the value.
+  - `Ceiling()` – Returns the least integer greater than or equal to the value.
+  - `Shift(l)` – Shifts the decimal point left or right.
+  - `GCD(x)` – Returns the greatest common divisor.
+  - `LCM(x)` – Returns the least common multiple.
+  - `Sqr()` – Returns the square of the value.
+  - `Invert()` – Returns the reciprocal of the value.
+  - `Cube()` – Returns the cube of the value.
+  - `Cubert()` – Returns the cube root of the value.
+  - `Pow10()` – Returns 10 raised to the power of the value.
+
+### Changed
+
+- Updated `.ValueEx()` so that omitted parameters now default to `vbString`.
+
+  - Simplifies conversion of BigDecimal values to strings.
+
+- Updated internal code to use object assignment (`Set X = Y.Minus(BigOne)`) where appropriate.
+
+  - Avoids copying internal BigDecimal data structures.
+  - Improves execution speed by reusing object references.
+  - Applied only where immutability guarantees can be maintained safely.
+
+- Increased internal cache precision for:
+
+  - `Ln2()`
+  - `Ln10()`
+  - `Pi`
+
+  Cache size increased from **150 digits** to **500 digits**.
+
+- Replaced Dictionary-based storage with optimized array structures in the BigOption library.
+
+  - Alternative implementations using Collections and more complex array algorithms were evaluated but resulted in slower overall performance.
+
+- Updated remaining core arithmetic functions to use byte arrays instead of string-based processing:
+
+  - `Plus_Positive()`
+  - `Minus_Positive()`
+  - `Compare_Positive()`
+  - `Divide_Positive()`
+  - `Times_Positive()`
+
+### Performance
+
+- Further optimized the Yield Manager.
+
+  - Delivers a significant performance improvement compared to version 1.4.
+
+- Optimized logarithmic and exponential functions:
+
+  - `Ln()`
+  - `Ln2()`
+  - `Ln10()`
+  - `Exp()`
+
+  Testing showed that a reduced Mercator/Taylor series implementation significantly outperformed the Atanh-series approach when cache usage was disabled.
+
+- Reduced internal overhead when updating BigDecimal state by introducing bulk variable update methods.
+  
+  - `SetRaw()`
+  - `SetRawB()`
+  - `GetRaw()`
+
+  These methods allow all internal BigDecimal variables to be updated in a single call, eliminating multiple Friend property calls for common internal operations.
+
+### Testing
+
+- Expanded the automated test suite from **69 tests** to **159 tests**.
+
+- Moved automated testing into the **BigCalculator** workbook.
+
+- Tests can be executed by:
+
+  1. Opening the VBA Editor.
+  2. Running the `RunAllTests` macro.
+
+- Complete execution time is approximately **3–4 seconds**.
+
+### Documentation
+
+- Updated and expanded the documentation.
+- Added new sections and examples to improve usability and clarity.
+
+---
+
 ## [1.4] - 2026-05-30
 
 ### Added
