@@ -6,7 +6,7 @@ Whether you are performing complex financial reconciliations or deep scientific 
 To demonstrate the precision and performance of the underlying engine, this add-in includes `BigCalculator`—a standalone interactive interface built directly in Excel. This calculator allows users to perform real-time, arbitrary-precision calculations and experiment with the expanded scientific function suite without needing to write a single formula. It serves as a perfect "sandbox" to verify results and visualize the extreme decimal accuracy that BigDecimal provides before implementing it into your primary workbooks.
 
 <p align="center">
-  <img src="Assets/BigCalculator.jpg" width="60%" alt="BigCalculator Screenshot">
+  <img src="Assets/BigCalculator.jpg" width="50%" alt="BigCalculator Screenshot">
 </p>
 
 ## Key Capabilities
