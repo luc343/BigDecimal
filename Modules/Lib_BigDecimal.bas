@@ -81,9 +81,22 @@ Public Property Get BigTwo() As BigDecimal
     Set BigTwo = Num
 End Property
 
+'BigThree
+Public Property Get BigThree() As BigDecimal
+    Static Num As BigDecimal
+
+    If Num Is Nothing Then
+	Set Num = New BigDecimal
+	Num.Unregister  'from BigOption
+	Num.sValue = "3"
+    End If
+
+    Set BigThree = Num
+End Property
+
 'BigPi
 Public Property Get BigPi() As BigDecimal
     Set BigPi = New BigDecimal
 
-    BigPi = BigPi.Pi
+    Set BigPi = BigPi.Pi
 End Property

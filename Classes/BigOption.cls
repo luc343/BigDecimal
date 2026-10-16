@@ -20,12 +20,12 @@ Option Explicit
 '
 '---------------------------------------------------
 
-#Const Stats = 1     '1 = true, 0 = false
+#Const Stats = 0     '1 = true, 0 = false
 
 Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (Destination As Any, Source As Any, ByVal Length As LongPtr)
 
-Private Const StepSize As Long = 16        'step size
-Private Const InitialSize As Long = 31     '0 to 15 = 16 initial list size
+Private Const StepSize As Long = 16         'step size
+Private Const InitSize As Long = 31         '0 to 15 = 16 initial list size
 
 Private List() As LongPtr                   'list of bigdecimals
 Private Size As Long                        'current ubound of the array
@@ -54,7 +54,7 @@ Private OptionAddTrailingZeroes As Boolean  'switch trailing zeroes on/off when 
 '######################### BigOption Methods #########################
 
 Private Sub Class_Initialize()
-    Size = InitialSize
+    Size = InitSize
     ReDim List(0 To Size)
     Num = 0
 
@@ -153,7 +153,7 @@ Friend Sub Unregister(ByRef Val As BigDecimal)
 	End If
     Next i
 
-    Err.Raise 5, "BigDecimalRegistry", "Object pointer not found in registry."
+    Err.Raise vbObjectError + 1200, "BigDecimalRegistry", "Object pointer not found in registry."
 End Sub
 
 Private Function CastPtr(ByVal Ptr As LongPtr) As BigDecimal
@@ -166,26 +166,6 @@ Private Function CastPtr(ByVal Ptr As LongPtr) As BigDecimal
 
     CopyMemory Temp, Zero, LenB(Zero)    'un-point Temp so VBA doesn't try to free the memory
 End Function
-
-'Public Function GetRefCount(ByVal Obj As IUnknown) As Long
-'    Dim pUnk As LongPtr
-'    Dim RefCount As Long
-'
-'    If Obj Is Nothing Then
-'        GetRefCount = 0
-'        Exit Function
-'    End If
-'
-'    pUnk = ObjPtr(Obj)
-'
-'    #If Win64 Then
-'        CopyMemory RefCount, ByVal (pUnk + 8), 4
-'    #Else
-'        CopyMemory RefCount, ByVal (pUnk + 4), 4
-'    #End If
-'
-'    GetRefCount = RefCount - 1
-'End Function
 
 Public Sub Stats()
 #If Stats Then
@@ -226,7 +206,7 @@ Public Property Get TarScale() As Long
 End Property
 
 Public Property Let TarScale(Val As Long)
-Dim Temp As BigDecimal
+    Dim Temp As BigDecimal
     Dim i As Long
 
     Big_TarScale = Val

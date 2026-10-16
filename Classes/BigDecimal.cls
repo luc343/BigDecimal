@@ -132,16 +132,10 @@ End Function
 
 Public Function Minus(Value As Variant) As BigDecimal
     Dim Other As BigDecimal
-    Dim Org_lSign As Long
 
     Set Other = Cast(Value)
 
-    Org_lSign = Other.lSign
-
-    Other.lSign = Other.lSign * -1
-    Set Minus = Me.Plus(Other)
-
-    Other.lSign = Org_lSign
+    Set Minus = Me.Plus(Other.Neg())
 End Function
 
 '***************************************
@@ -189,11 +183,11 @@ Public Function Remdr(Value As Variant) As BigDecimal
     Set MeAbs = Me.AbsVal()
     Set OtherAbs = Other.AbsVal()
 
-    Set Quot = MeAbs.Divide(OtherAbs).Trunc()       'Quotient = Int(Abs(x / y))
-    Set Remdr = MeAbs.Minus(OtherAbs.Times(Quot))   'Remainder = Abs(dblX) - Abs(dblY) * dblQuotient
+    Set Quot = MeAbs.Divide(OtherAbs).Trunc()
+    Set Remdr = MeAbs.Minus(OtherAbs.Times(Quot))   'remdr(x, y) = |x| - |y| * Int(|x / y|)
 
     If Big_lSign * Other.lSign < 0 Then
-	Set Remdr = Other.AbsVal().Minus(Remdr)
+	Set Remdr = OtherAbs.Minus(Remdr)
     End If
 
     Remdr.lSign = Other.lSign
@@ -224,7 +218,7 @@ Public Function Sqrt() As BigDecimal
 
     While Sqrt.Minus(X).AbsVal().IsGT(Prec)
 	X = Sqrt
-	Set Sqrt = Sqrt.Plus(Divide(Sqrt)).Divide(BigTwo)       'x = (x + value / x) / 2
+	Set Sqrt = Sqrt.Plus(Me.Divide(Sqrt)).Divide(BigTwo)       'sqrt(x) = (sqrt + x / sqrt) / 2
 
 	Yield.Events
     Wend
@@ -269,7 +263,7 @@ Public Function Cubert() As BigDecimal
 	Exit Function
     End If
 
-    Set Cubert = Me.AbsVal().Ln().Divide(3).Exp()   'exp(ln(|x|) / 3)
+    Set Cubert = Me.AbsVal().Ln().Divide(BigThree).Exp()        'cubrt(x) = exp(ln(|x|) / 3)
 
     If Big_lSign < 0 Then
 	Set Cubert = Cubert.Neg()
@@ -300,7 +294,7 @@ Public Function Pow(Value As Variant) As BigDecimal
     If Other.lScale = 0 Then    'integer power
 	Set Pow = PowInt(Other)
     Else
-	Set Pow = Me.AbsVal().Ln().Times(Other).Exp()
+	Set Pow = Me.AbsVal().Ln().Times(Other).Exp()       'pow(x, y) = exp(ln(|x|) * y)
 
 	If Big_lSign = -1 And Other.Trunc().Remdr(BigTwo).IsEq(BigOne) Then
 	    Set Pow = Pow.Neg()
@@ -370,7 +364,7 @@ Public Function Log() As BigDecimal
 	Err.Raise vbObjectError + 1104, "BigDecimal", "Logarithm of ZERO or negative number is undefined."
     End If
 
-    Set Log = Me.Ln().Divide(Ln10())
+    Set Log = Me.Ln().Divide(Ln10())        'log(x) = ln(x) / ln(10)
 
     DebugPrint Log, "Log"
 End Function
@@ -418,7 +412,7 @@ Public Function Ln() As BigDecimal
     Set Term = X
     Set Y = BigTwo
     While Term.AbsVal().IsGT(Prec)
-	Set Ln = Ln.Plus(Term)
+	Set Ln = Ln.Plus(Term)                                                'ln = ln +/- term
 	Set Term = Term.Neg().Times(X).Times(Y.Minus(BigOne)).Divide(Y)       'term = -term * x * (y - 1) / y
 	Set Y = Y.Plus(BigOne)
 
@@ -434,7 +428,7 @@ Private Function Ln2() As BigDecimal
     Dim X As BigDecimal
     Dim NextX As BigDecimal
     Dim ExpX As BigDecimal
-    Dim Fraction As BigDecimal
+    Dim Divisor As BigDecimal
     Dim Prec As BigDecimal
     Dim Done As Boolean
 
@@ -448,7 +442,7 @@ Private Function Ln2() As BigDecimal
     End If
 
     Set X = New BigDecimal
-    Set Fraction = New BigDecimal
+    Set Divisor = New BigDecimal
     Set Prec = New BigDecimal
 
     Prec = "0." & String$(Big_lMaxScale - 1, "0") & "1"
@@ -458,8 +452,8 @@ Private Function Ln2() As BigDecimal
     Done = False
     Do While Not Done
 	Set ExpX = X.Exp()
-	Fraction = BigTwo.Minus(ExpX).Divide(BigTwo.Plus(ExpX))
-	Set NextX = X.Plus(BigTwo.Times(Fraction))
+	Divisor = BigTwo.Minus(ExpX).Divide(BigTwo.Plus(ExpX))
+	Set NextX = X.Plus(BigTwo.Times(Divisor))           'ln(2) = x + 2 * (2 - exp(x)) / (2 + exp(x))
 
 	If NextX.Minus(X).AbsVal().IsLT(Prec) Then
 	    Done = True
@@ -482,7 +476,7 @@ Private Function Ln10() As BigDecimal
     Dim NextX As BigDecimal
     Dim ExpX As BigDecimal
     Dim Ten As BigDecimal
-    Dim Fraction As BigDecimal
+    Dim Divisor As BigDecimal
     Dim Prec As BigDecimal
     Dim Done As Boolean
 
@@ -496,7 +490,7 @@ Private Function Ln10() As BigDecimal
     End If
 
     Set X = New BigDecimal
-    Set Fraction = New BigDecimal
+    Set Divisor = New BigDecimal
     Set Ten = New BigDecimal
     Set Prec = New BigDecimal
 
@@ -508,8 +502,8 @@ Private Function Ln10() As BigDecimal
     Done = False
     Do While Not Done
 	Set ExpX = X.Exp()
-	Fraction = Ten.Minus(ExpX).Divide(Ten.Plus(ExpX))
-	Set NextX = X.Plus(BigTwo.Times(Fraction))
+	Divisor = Ten.Minus(ExpX).Divide(Ten.Plus(ExpX))
+	Set NextX = X.Plus(BigTwo.Times(Divisor))           'ln(10) = x + 2 * (10 - exp(x)) / (10 + exp(x))
 
 	If NextX.Minus(X).AbsVal().IsLT(Prec) Then
 	    Done = True
@@ -537,23 +531,23 @@ Public Function Exp() As BigDecimal
     Dim Term As BigDecimal
     Dim Prec As BigDecimal
     Dim n As BigDecimal
-    Dim ReducedX As BigDecimal
-    Dim Half As BigDecimal
+    Dim X As BigDecimal
+    Dim Target As BigDecimal
     Dim K As Long
     Dim i As Long
 
     Set Prec = New BigDecimal
-    Set ReducedX = New BigDecimal
-    Set Half = New BigDecimal
+    Set X = New BigDecimal
+    Set Target = New BigDecimal
 
     Prec = "0." & String$(Big_lMaxScale - 1, "0") & "1"
 
     K = 0
-    Half = 0.5
-    ReducedX = Me
+    Target = 100
+    X = Me
 
-    While ReducedX.AbsVal().IsGT(Half)
-	Set ReducedX = ReducedX.Divide(BigTwo)
+    While X.AbsVal().IsGT(Target)
+	Set X = X.Divide(BigTwo)
 	K = K + 1
 
 	Yield.Events
@@ -564,8 +558,8 @@ Public Function Exp() As BigDecimal
     Set n = BigOne
 
     While Term.AbsVal().IsGT(Prec)
-	Set Term = Term.Times(ReducedX).Divide(n)
-	Set Exp = Exp.Plus(Term)
+	Set Term = Term.Times(X).Divide(n)
+	Set Exp = Exp.Plus(Term)                    'e = e + term * x / n
 	Set n = n.Plus(BigOne)
 
 	Yield.Events
@@ -582,18 +576,347 @@ End Function
 
 '***************************************
 '
+'           Sine in Radians
+'
+'***************************************
+
+Public Function Sin() As BigDecimal
+    Dim Term As BigDecimal
+    Dim Prec As BigDecimal
+    Dim XSquared As BigDecimal
+    Dim X As BigDecimal
+    Dim Divisor As BigDecimal
+    Dim TwoK As BigDecimal
+    Dim OnePi As BigDecimal
+    Dim TwoPi As BigDecimal
+    Dim HalfPi As BigDecimal
+    Dim K As BigDecimal
+    Dim Sign As Long, QSign As Long
+
+    Set Sin = New BigDecimal
+    Set Divisor = New BigDecimal
+    Set Prec = New BigDecimal
+
+    Prec = "0." & String$(Big_lMaxScale - 1, "0") & "1"
+
+    Set OnePi = Me.Pi
+    Set TwoPi = OnePi.Times(BigTwo)
+    Set HalfPi = OnePi.Divide(BigTwo)
+
+    Set X = Me.Remdr(TwoPi)
+    If X.IsLT(BigZero) Then
+	Set X = X.Plus(TwoPi)
+    End If
+
+    If X.IsLE(HalfPi) Then
+	QSign = 1
+    ElseIf X.IsLE(OnePi) Then
+	QSign = 1
+	Set X = OnePi.Minus(X)
+    ElseIf X.IsLE(BigThree.Times(HalfPi)) Then
+	QSign = -1
+	Set X = X.Minus(OnePi)
+    Else
+	QSign = -1
+	Set X = TwoPi.Minus(X)
+    End If
+
+    Set XSquared = X.Times(X)
+
+    Sin = X
+    Set Term = X
+
+    Set K = BigOne
+    Sign = -1
+
+    While Term.AbsVal().IsGT(Prec)
+	Set TwoK = BigTwo.Times(K)
+	Divisor = TwoK.Times(TwoK.Plus(BigOne))
+	Set Term = Term.Times(XSquared).Divide(Divisor)     'term = term * x^2 / (2K * (2K + 1))
+
+	Set K = K.Plus(BigOne)
+
+	If Sign = -1 Then
+	    Set Sin = Sin.Minus(Term)
+	    Sign = 1
+	Else
+	    Set Sin = Sin.Plus(Term)
+	    Sign = -1
+	End If
+	Yield.Events
+    Wend
+
+    If QSign = -1 Then
+	Set Sin = Sin.Neg()
+    End If
+
+    DebugPrint Sin, "Sin"
+End Function
+
+'***************************************
+'
+'          Cosine in Radians
+'
+'***************************************
+
+Public Function Cos() As BigDecimal
+    Dim Term As BigDecimal
+    Dim Prec As BigDecimal
+    Dim XSquared As BigDecimal
+    Dim X As BigDecimal
+    Dim Divisor As BigDecimal
+    Dim K As BigDecimal
+    Dim TwoK As BigDecimal
+    Dim OnePi As BigDecimal
+    Dim TwoPi As BigDecimal
+    Dim HalfPi As BigDecimal
+    Dim Sign As Long, QSign As Long
+
+    Set Cos = New BigDecimal
+    Set Divisor = New BigDecimal
+    Set Prec = New BigDecimal
+
+    Prec = "0." & String$(Big_lMaxScale - 1, "0") & "1"
+
+    Set OnePi = Me.Pi
+    Set TwoPi = OnePi.Times(BigTwo)
+    Set HalfPi = OnePi.Divide(BigTwo)
+
+    Set X = Me.Remdr(TwoPi)
+
+    If X.IsLT(BigZero) Then
+	Set X = X.Plus(TwoPi)
+    End If
+
+    If X.IsLE(HalfPi) Then
+	QSign = 1
+    ElseIf X.IsLE(OnePi) Then
+	QSign = -1
+	Set X = OnePi.Minus(X)
+    ElseIf X.IsLE(BigThree.Times(HalfPi)) Then
+	QSign = -1
+	Set X = X.Minus(OnePi)
+    Else
+	QSign = 1
+	Set X = TwoPi.Minus(X)
+    End If
+
+    Set XSquared = X.Times(X)
+    Cos = BigOne
+    Set Term = BigOne
+    Set K = BigOne
+    Sign = -1
+
+    While Term.AbsVal().IsGT(Prec)
+	Set TwoK = BigTwo.Times(K)
+	Divisor = TwoK.Times(TwoK.Minus(BigOne))
+	Set Term = Term.Times(XSquared).Divide(Divisor)     'term = term * x^2 / (2K * (2K - 1))
+
+	Set K = K.Plus(BigOne)
+
+	If Sign = -1 Then
+	    Set Cos = Cos.Minus(Term)
+	    Sign = 1
+	Else
+	    Set Cos = Cos.Plus(Term)
+	    Sign = -1
+	End If
+
+	Yield.Events
+    Wend
+
+    If QSign = -1 Then
+	Set Cos = Cos.Neg()
+    End If
+
+    DebugPrint Cos, "Cos"
+End Function
+
+'***************************************
+'
+'          Tangent in Radians
+'
+'***************************************
+
+Public Function Tan() As BigDecimal
+    Dim C As BigDecimal
+
+    Set C = Me.Cos()
+    If C.IsZero() Then
+	Err.Raise vbObjectError + 1106, "BigDecimal", "Division by Zero: Tangent is undefined at this angle."
+    End If
+
+    Set Tan = Me.Sin().Divide(C)       'tan(x) = sin(x) / cos(x)
+    DebugPrint Tan, "Tan"
+End Function
+
+'***************************************
+'
+'      Hyperbolic Sine in Radians
+'
+'***************************************
+
+Public Function Sinh() As BigDecimal
+    Set Sinh = Me.Exp().Minus(Me.Neg().Exp()).Divide(BigTwo)        'sinh = (exp(x) - exp(-x)) / 2
+
+    DebugPrint Sinh, "Sinh"
+End Function
+
+'***************************************
+'
+'     Hyperbolic Cosine in Radians
+'
+'***************************************
+
+Public Function Cosh() As BigDecimal
+    Set Cosh = Me.Exp().Plus(Me.Neg().Exp()).Divide(BigTwo)        'cosh = (exp(x) + exp(-x)) / 2
+
+    DebugPrint Cosh, "Cosh"
+End Function
+
+'***************************************
+'
+'     Hyperbolic Tangent in Radians
+'
+'***************************************
+
+Public Function Tanh() As BigDecimal
+    Set Tanh = Me.Sinh().Divide(Me.Cosh())          'tanh(x) = sinh(x) / cosh(x)
+End Function
+
+'***************************************
+'
+'        Cosecant in Radians
+'
+'***************************************
+
+Public Function Csc() As BigDecimal
+    Dim S As BigDecimal
+
+    Set S = Me.Sin()
+    If S.IsZero() Then
+	Err.Raise vbObjectError + 1107, "BigDecimal", "Division by Zero: Cosecant is undefined at this angle."
+    End If
+
+    Set Csc = BigOne.Divide(S)
+End Function
+
+'***************************************
+'
+'         Secant in Radians
+'
+'***************************************
+
+Public Function Sec() As BigDecimal
+    Dim C As BigDecimal
+
+    Set C = Me.Cos()
+    If C.IsZero() Then
+	Err.Raise vbObjectError + 1108, "BigDecimal", "Division by Zero: Secant is undefined at this angle."
+    End If
+
+    Set Sec = BigOne.Divide(C)
+End Function
+
+'***************************************
+'
+'        Cotangent in Radians
+'
+'***************************************
+
+Public Function Cot() As BigDecimal
+    Dim S As BigDecimal
+
+    Set S = Me.Sin()
+    If S.IsZero() Then
+	Err.Raise vbObjectError + 1109, "BigDecimal", "Division by Zero: Cotangent is undefined at this angle."
+    End If
+
+    Set Cot = Me.Cos().Divide(S)
+End Function
+
+'***************************************
+'
+'             To Radians
+'
+'***************************************
+
+Public Function ToRad() As BigDecimal
+    Set ToRad = Me.Times(BigPi).Divide(180)
+End Function
+
+'***************************************
+'
+'             To Degrees
+'
+'***************************************
+
+Public Function ToDeg() As BigDecimal
+    Set ToDeg = Me.Times(180).Divide(BigPi)
+End Function
+
+'***************************************
+'
+'             Percentage
+'
+'***************************************
+
+Public Function Pct(Num1 As BigDecimal) As BigDecimal
+    Set Pct = Me.Shift(-2).Times(Num1)
+End Function
+
+'***************************************
+'
 '               Invert
 '
 '***************************************
 
 Public Function Invert() As BigDecimal
     If Me.IsZero() Then
-	Err.Raise vbObjectError + 1105, "BigDecimal", "Division by ZERO is undefined."
+	Err.Raise vbObjectError + 1110, "BigDecimal", "Division by ZERO is undefined."
     End If
 
     Set Invert = BigOne.Divide(Me)
 
     DebugPrint Invert, "Invert"
+End Function
+
+'***************************************
+'
+'               Maximum
+'
+'***************************************
+
+Public Function Max(ParamArray Nums() As Variant) As BigDecimal
+    Dim i As Long
+
+    Set Max = New BigDecimal
+
+    Max = Me
+    For i = LBound(Nums) To UBound(Nums)
+	If Max.IsLT(Nums(i)) Then
+	    Max = Nums(i)
+	End If
+    Next i
+End Function
+
+'***************************************
+'
+'               Minimum
+'
+'***************************************
+
+Public Function Min(ParamArray Nums() As Variant) As BigDecimal
+    Dim i As Long
+
+    Set Min = New BigDecimal
+
+    Min = Me
+    For i = LBound(Nums) To UBound(Nums)
+	If Min.IsGT(Nums(i)) Then
+	    Min = Nums(i)
+	End If
+    Next i
 End Function
 
 '***************************************
@@ -678,7 +1001,7 @@ Public Function Fact() As BigDecimal
     Dim X As BigDecimal
 
     If Big_lScale <> 0 Then
-	Err.Raise vbObjectError + 1106, "BigDecimal", "Factorial of a fraction is not permtted."
+	Err.Raise vbObjectError + 1111, "BigDecimal", "Factorial of a fraction is not permtted."
     End If
 
     Set Fact = BigOne
@@ -742,7 +1065,7 @@ Public Function Neg() As BigDecimal
     Res_Dot = Big_lDot
     Res_Frac = Big_lFrac
 
-    Select Case CmpTo(0)
+    Select Case Big_lSign
     Case -1     'Me < 0
 	RemoveCh Res_Bytes
 	Res_Sign = 1
@@ -768,17 +1091,28 @@ End Function
 '
 '***************************************
 
-Public Function Floor() As BigDecimal
-    If Big_lScale = 0 Or Me.IsZero() Then
-	Set Floor = New BigDecimal
-	Floor = Me
-    ElseIf Me.IsPos() Then
-	Set Floor = Me.Trunc()
-    Else    'is negative
-	Set Floor = Me.Trunc().Minus(BigOne)
+Public Function Floor(Optional Big_TarScale As Long = 0) As BigDecimal
+    If Big_TarScale = 0 Then
+	Set Floor = Me.FloorInt()
+	Exit Function
     End If
 
+    Set Floor = Me.Shift(Big_TarScale)
+    Set Floor = Floor.FloorInt()
+    Set Floor = Floor.Shift(-Big_TarScale)
+
     DebugPrint Floor, "Floor"
+End Function
+
+Friend Function FloorInt() As BigDecimal
+    If Big_lScale = 0 Or Me.IsZero() Then
+	Set FloorInt = New BigDecimal
+	FloorInt = Me
+    ElseIf Me.IsPos() Then
+	Set FloorInt = Me.TruncInt()
+    Else    'is negative
+	Set FloorInt = Me.TruncInt().Minus(BigOne)
+    End If
 End Function
 
 '***************************************
@@ -787,17 +1121,28 @@ End Function
 '
 '***************************************
 
-Public Function Ceiling() As BigDecimal
-    If Big_lScale = 0 Or Me.IsZero() Then
-	Set Ceiling = New BigDecimal
-	Ceiling = Me
-    ElseIf Me.IsPos() Then
-	Set Ceiling = Me.Trunc().Plus(BigOne)
-    Else    'is negative
-	Set Ceiling = Me.Trunc()
+Public Function Ceiling(Optional Big_TarScale As Long = 0) As BigDecimal
+    If Big_TarScale = 0 Then
+	Set Ceiling = Me.CeilingInt()
+	Exit Function
     End If
 
+    Set Ceiling = Me.Shift(Big_TarScale)
+    Set Ceiling = Ceiling.CeilingInt()
+    Set Ceiling = Ceiling.Shift(-Big_TarScale)
+
     DebugPrint Ceiling, "Ceiling"
+End Function
+
+Friend Function CeilingInt() As BigDecimal
+    If Big_lScale = 0 Or Me.IsZero() Then
+	Set CeilingInt = New BigDecimal
+	CeilingInt = Me
+    ElseIf Me.IsPos() Then
+	Set CeilingInt = Me.TruncInt().Plus(BigOne)
+    Else    'is negative
+	Set CeilingInt = Me.TruncInt()
+    End If
 End Function
 
 '***************************************
@@ -806,22 +1151,32 @@ End Function
 '
 '***************************************
 
-Public Function Trunc() As BigDecimal
+Public Function Trunc(Optional Big_TarScale As Long = 0) As BigDecimal
+    If Big_TarScale = 0 Then
+	Set Trunc = Me.TruncInt()
+	Exit Function
+    End If
+
+    Set Trunc = Me.Shift(Big_TarScale)
+    Set Trunc = Trunc.TruncInt()
+    Set Trunc = Trunc.Shift(-Big_TarScale)
+
+    DebugPrint Trunc, "Trunc"
+End Function
+
+Friend Function TruncInt() As BigDecimal
     Dim Res_Value As String
 
-    Set Trunc = New BigDecimal
+    Set TruncInt = New BigDecimal
 
     If Big_lScale = 0 Then
-	Trunc.SetRaw Big_sValue, Big_lSign, Big_lInt, Big_lDot, Big_lFrac, Big_lScale
-	DebugPrint Trunc, "Trunc"
+	TruncInt.SetRaw Big_sValue, Big_lSign, Big_lInt, Big_lDot, Big_lFrac, Big_lScale
 	Exit Function
     End If
 
     Res_Value = Mid$(Big_sValue, 1, Big_lDot - 1)
 
-    Trunc.SetRaw Res_Value, Big_lSign, Big_lInt, Big_lDot, Big_lDot, 0
-
-    DebugPrint Trunc, "Trunc"
+    TruncInt.SetRaw Res_Value, Big_lSign, Big_lInt, Big_lDot, Big_lDot, 0
 End Function
 
 '***************************************
@@ -1333,21 +1688,21 @@ Private Function Cast(Other As Variant) As BigDecimal
 	    Case "BigDecimal"
 		Set Cast = Other    'fast pointer copy
 	    Case "Nothing"
-		Err.Raise vbObjectError + 1107, "BigDecimal", "Can't cast Nothing to BigDecimal."
+		Err.Raise vbObjectError + 1112, "BigDecimal", "Can't cast Nothing to BigDecimal."
 
 	    Case Else
-		Err.Raise vbObjectError + 1108, "BigDecimal", "Can't cast object " & TypeName(Other) & " to BigDecimal."
+		Err.Raise vbObjectError + 1113, "BigDecimal", "Can't cast object " & TypeName(Other) & " to BigDecimal."
 	End Select
     Else
 	Select Case VarType(Other)
 	    Case vbInteger, vbLong, vbSingle, vbDouble, vbString
 		Cast.sValue = CStr(Other)
 		If Cast.Parse() = -1 Then
-		    Err.Raise vbObjectError + 1109, "BigDecimal", TypeName(Other) & " is a malformed BigDecimal number."
+		    Err.Raise vbObjectError + 1114, "BigDecimal", TypeName(Other) & " is a malformed BigDecimal number."
 		End If
 
 	    Case Else
-		Err.Raise vbObjectError + 1110, "BigDecimal", "Can't cast " & TypeName(Other) & " to a BigDecimal."
+		Err.Raise vbObjectError + 1115, "BigDecimal", "Can't cast " & TypeName(Other) & " to a BigDecimal."
 	End Select
     End If
 End Function
@@ -1682,7 +2037,7 @@ Private Function Divide_Positive(Other As BigDecimal, Final_Sign As Long) As Big
     Other_Bytes = Oth_Value
 
     If Oth_Scale = 0 And Other_Bytes((Oth_Int - 1) * 2) = Asc_0 Then
-	Err.Raise vbObjectError + 1111, "BigDecimal", "Division By ZERO is undefined."
+	Err.Raise vbObjectError + 1116, "BigDecimal", "Division By ZERO is undefined."
     End If
 
     dividend_len = lLen + Big_lScale
@@ -1931,7 +2286,6 @@ Private Sub PrependCh(ByRef ArrB() As Byte, ByVal Ch As String)
     ArrB(1) = ChB(1)
 End Sub
 
-
 Private Sub RemoveCh(ByRef ArrB() As Byte)
     Dim Size As Long
 
@@ -1969,7 +2323,7 @@ Public Property Let Value(Other As Variant)
 Attribute Value.VB_UserMemId = 0
    If IsObject(Other) Then
 	If Other Is Nothing Then
-	    Err.Raise vbObjectError + 1112, "BigDecimal", "BigDecimal can't be nothing."
+	    Err.Raise vbObjectError + 1117, "BigDecimal", "BigDecimal can't be nothing."
 	End If
 
 	If TypeName(Other) = "BigDecimal" Then
@@ -1988,17 +2342,17 @@ Attribute Value.VB_UserMemId = 0
 		Big_sValue = Mid$(Big_sValue, 1, Big_lDot + Big_lScale)
 	    End If
 	Else
-	    Err.Raise vbObjectError + 1113, "BigDecimal", "Can't cast object " & TypeName(Other) & " to BigDecimal."
+	    Err.Raise vbObjectError + 1118, "BigDecimal", "Can't cast object " & TypeName(Other) & " to BigDecimal."
 	End If
     Else
 	Select Case VarType(Other)
 	    Case vbInteger, vbLong, vbLongLong, vbSingle, vbDouble, vbString
 		Big_sValue = CStr(Other)
 		If Parse() = -1 Then
-		    Err.Raise vbObjectError + 1114, "BigDecimal", TypeName(Other) & " is a malformed BigDecimal number."
+		    Err.Raise vbObjectError + 1119, "BigDecimal", TypeName(Other) & " is a malformed BigDecimal number."
 		End If
 	    Case Else
-		Err.Raise vbObjectError + 1115, "BigDecimal", "Can't cast " & TypeName(Other) & " to BigDecimal."
+		Err.Raise vbObjectError + 1120, "BigDecimal", "Can't cast " & TypeName(Other) & " to BigDecimal."
 	End Select
     End If
 End Property
@@ -2025,7 +2379,7 @@ Public Property Get ValueEx(Optional RetType As Long = vbString) As Variant
 	    ValueEx = CStr(Trim().sValue)
 	End If
     Case Else
-	Err.Raise vbObjectError + 1116, "BigDecimal", "Unsupported variable type " & RetType
+	Err.Raise vbObjectError + 1121, "BigDecimal", "Unsupported variable type " & RetType
     End Select
 End Property
 
@@ -2109,15 +2463,15 @@ End Property
 Private Function ATanReciprocal(ByVal X As Long, Prec As BigDecimal) As BigDecimal
     Dim Term As BigDecimal
     Dim Result As BigDecimal
-    Dim X2 As BigDecimal
+    Dim XSquared As BigDecimal
     Dim Y As BigDecimal
     Dim Sign As Long
 
     Set Result = New BigDecimal
-    Set X2 = New BigDecimal
+    Set XSquared = New BigDecimal
     Set Y = New BigDecimal
 
-    X2 = X * X
+    XSquared = X * X
     Y = BigOne
     Sign = 1
 
@@ -2128,7 +2482,7 @@ Private Function ATanReciprocal(ByVal X As Long, Prec As BigDecimal) As BigDecim
 	Y = Y.Plus(BigTwo)
 	Sign = Sign * -1
 
-	Set Term = Term.Divide(X2)
+	Set Term = Term.Divide(XSquared)
 
 	If Sign > 0 Then
 	    Set Result = Result.Plus(Term.Divide(Y))
