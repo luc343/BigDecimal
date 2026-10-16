@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.6] - 2026-10-16
+
+### Added
+
+- Added new statistical and utility methods:
+  - `Min(list)` – Returns the smallest value from a given list.
+  - `Max(list)` – Returns the largest value from a given list.
+  - `Pct(Percent)` – Calculates and returns the percentage of the value.
+
+- Added a comprehensive suite of trigonometric methods:
+  - `Sin()` – Sine
+  - `Cos()` – Cosine
+  - `Tan()` – Tangent
+  - `Sinh()` – Hyperbolic Sine
+  - `Cosh()` – Hyperbolic Cosine
+  - `Tanh()` – Hyperbolic Tangent
+  - `Sec()` – Secant ($1 / \sin()$)
+  - `Csc()` – Cosecant ($1 / \cos()$)
+  - `Cot()` – Cotangent ($\cos() / \sin()$, handles undefined states)
+  - `ToRad()` – Converts degrees to radians ($x \times \pi / 180$)
+  - `ToDeg()` – Converts radians to degrees ($x \times 180 / \pi$)
+
+- Added the internal `BigThree` property, used across several library features including internal trigonometric calculations.
+
+### Changed
+
+- Updated core rounding and truncation functions to accept an optional `place` parameter, enabling actions to be performed at a specified position to the left or right of the decimal point:
+  - `Floor(place)` – Rounds down at the specified decimal place.
+  - `Ceiling(place)` – Rounds up at the specified decimal place.
+  - `Trunc(place)` – Truncates toward zero at the specified decimal place.
+
+- Moved all automated test routines directly into the `BigCalculator` code module.
+  - The expanded test suite now contains **239 tests** (split into two sets to prevent overflow in the VBA Immediate Window).
+  - Tests can now be executed directly from the VBA Editor by running the `RunAllTests` and `RunAllTests2` macros.
+
+### Performance
+
+- Implemented internal speed optimizations and general code improvements across core mathematical operations.
+
+### Documentation
+
+- Updated and expanded the developer documentation with new sections to improve clarity and usability.
+
+---
+
 ## [1.5] - 2026-06-14
 
 ### Added
